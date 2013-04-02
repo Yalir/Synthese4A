@@ -1,0 +1,2 @@
+OS X:
+./configure --disable-gtkspell --disable-meanwhile --disable-nm --disable-dbus
