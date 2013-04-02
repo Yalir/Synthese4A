@@ -929,9 +929,6 @@ purple_conversation_write(PurpleConversation *conv, const char *who,
 						const char *message, PurpleMessageFlags flags,
 						time_t mtime)
 {
-	printf("who=%s\n", who);
-	printf("message=%s\n", message);
-	
 	PurplePluginProtocolInfo *prpl_info = NULL;
 	PurpleConnection *gc = NULL;
 	PurpleAccount *account;
@@ -967,6 +964,9 @@ purple_conversation_write(PurpleConversation *conv, const char *who,
 	if (who == NULL || *who == '\0')
 		who = purple_conversation_get_name(conv);
 	alias = who;
+	
+	printf("who=%s\n", who);
+	printf("message=%s\n", message);
 
 	plugin_return =
 		GPOINTER_TO_INT(purple_signal_emit_return_1(
