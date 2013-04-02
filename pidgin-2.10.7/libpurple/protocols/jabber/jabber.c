@@ -619,6 +619,8 @@ void jabber_send(JabberStream *js, xmlnode *packet)
 	puts("");
 	puts("=================================");
 	printf("Jabber sent data:\n%s\n", formatted);
+	
+	g_free(formatted);
 }
 
 static gboolean jabber_keepalive_timeout(PurpleConnection *gc)
