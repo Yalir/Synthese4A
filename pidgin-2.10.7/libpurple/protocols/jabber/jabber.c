@@ -624,7 +624,7 @@ void jabber_send(JabberStream *js, xmlnode *packet)
 	
 	g_free(formatted);
 	
-	exit (55);
+	//exit (55);
 }
 
 static gboolean jabber_keepalive_timeout(PurpleConnection *gc)
