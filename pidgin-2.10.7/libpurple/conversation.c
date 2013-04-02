@@ -931,6 +931,9 @@ purple_conversation_write(PurpleConversation *conv, const char *who,
 						const char *message, PurpleMessageFlags flags,
 						time_t mtime)
 {
+	printf("who=%s\n", who);
+	printf("message=%s\n", message);
+	
 	PurplePluginProtocolInfo *prpl_info = NULL;
 	PurpleConnection *gc = NULL;
 	PurpleAccount *account;
