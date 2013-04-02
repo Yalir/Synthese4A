@@ -1,0 +1,8 @@
+*.o
+*.lo
+*.gmo
+*.pc
+*.la
+.deps
+.libs
+Makefile*
