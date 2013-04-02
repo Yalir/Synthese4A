@@ -612,6 +612,13 @@ void jabber_send_signal_cb(PurpleConnection *pc, xmlnode **packet,
 void jabber_send(JabberStream *js, xmlnode *packet)
 {
 	purple_signal_emit(purple_connection_get_prpl(js->gc), "jabber-sending-xmlnode", js->gc, &packet);
+	
+	int len = 0;
+	char *formatted = xmlnode_to_formatted_str(packet, &len);
+	
+	puts("");
+	puts("=================================");
+	printf("Jabber sent data:\n%s\n", formatted);
 }
 
 static gboolean jabber_keepalive_timeout(PurpleConnection *gc)
