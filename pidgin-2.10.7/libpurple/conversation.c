@@ -35,6 +35,8 @@
 
 #define SEND_TYPED_TIMEOUT_SECONDS 5
 
+/** THIS IS IT, NOW BEGIN */
+
 static GList *conversations = NULL;
 static GList *ims = NULL;
 static GList *chats = NULL;
@@ -87,7 +89,7 @@ static gboolean _purple_conversation_user_equal(gconstpointer a, gconstpointer b
 	return !g_utf8_collate(a, b);
 }
 
-void
+void 
 purple_conversations_set_ui_ops(PurpleConversationUiOps *ops)
 {
 	default_ops = ops;
