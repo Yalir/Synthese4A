@@ -32,6 +32,7 @@
 #include "request.h"
 #include "signals.h"
 #include "util.h"
+#include <openssl/aes.h>
 
 #define SEND_TYPED_TIMEOUT_SECONDS 5
 
@@ -144,6 +145,27 @@ common_send(PurpleConversation *conv, const char *message, PurpleMessageFlags ms
 	char *displayed = NULL, *sent = NULL;
 	int err = 0;
 
+	/* 
+	 * ENCRYPTION 
+	 */
+	
+	// Generate AES_KEY :
+	printf("Generating AES_KEY\n");
+	char *key = "thisisasecretkey";
+    AES_KEY aes_key;
+
+    if(AES_set_encrypt_key((unsigned char*) key, 128, &aes_key) != 0)
+            return EXIT_FAILURE;
+	
+	printf("AES_KEY generated\n");
+	
+	// Encrypting data :
+	char * data = "Random data, high as fuck";
+	printf("Encrypting data : %s\n", data);
+	unsigned char out[100];
+	AES_encrypt(data, out, &aes_key);
+	printf("Data encrypted\n");
+	
 	if (*message == '\0')
 		return;
 
