@@ -148,6 +148,7 @@ typedef enum
 #include "buddyicon.h"
 #include "log.h"
 #include "server.h"
+#include <openssl/evp.h>
 
 /**
  * Conversation operations and events.
@@ -361,6 +362,16 @@ struct _PurpleConversation
 
 	PurpleConnectionFlags features; /**< The supported features */
 	GList *message_history;         /**< Message history, as a GList of PurpleConvMessage's */
+	
+	/* AES related attributes */
+	struct {
+		EVP_CIPHER_CTX en;
+		EVP_CIPHER_CTX de;
+		unsigned int salt[2];
+		unsigned char *key_data;
+		int key_data_len;
+		int i;
+	} aes_data;
 };
 
 #ifdef __cplusplus

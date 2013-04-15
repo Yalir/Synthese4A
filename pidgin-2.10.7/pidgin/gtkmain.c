@@ -516,7 +516,6 @@ int main(int argc, char *argv[])
 		{"sync",         no_argument,       NULL, 'S'},
 		{0, 0, 0, 0}
 	};
-	printf("We are in the main function!\n");
 
 #ifdef DEBUG
 	debug_enabled = TRUE;

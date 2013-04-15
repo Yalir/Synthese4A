@@ -163,7 +163,7 @@ common_send(PurpleConversation *conv, const char *message, PurpleMessageFlags ms
 	char * data = "Random data, high as fuck";
 	printf("Encrypting data : %s\n", data);
 	unsigned char out[100];
-	AES_encrypt(data, out, &aes_key);
+	AES_encrypt(message, out, &aes_key);
 	printf("Data encrypted\n");
 	
 	if (*message == '\0')
