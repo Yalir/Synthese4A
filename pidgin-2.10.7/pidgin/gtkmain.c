@@ -516,6 +516,7 @@ int main(int argc, char *argv[])
 		{"sync",         no_argument,       NULL, 'S'},
 		{0, 0, 0, 0}
 	};
+	printf("We are in the main function!\n");
 
 #ifdef DEBUG
 	debug_enabled = TRUE;
@@ -588,6 +589,7 @@ int main(int argc, char *argv[])
 	 * Create a socket pair for receiving unix signals from a signal
 	 * handler.
 	 */
+	 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, signal_sockets) < 0) {
 		perror("Failed to create sockets for GLib signal handling");
 		exit(1);

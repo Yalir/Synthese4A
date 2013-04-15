@@ -4,4 +4,5 @@ OS X:
 Debian :
 ./configure --disable-screensaver
 
-./configure --disable-gtkspell --disable-meanwhile --disable-nm --disable-dbus --disable-screensaver --disable-vv --disable-gstream
+Mix :
+./configure --disable-gtkspell --disable-meanwhile --disable-nm --disable-dbus --disable-screensaver --disable-vv --disable-gstreamer
