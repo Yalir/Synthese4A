@@ -80,6 +80,8 @@ JABBERSOURCES = \
 			  roster.h \
 			  si.c \
 			  si.h \
+			  SymCipher.c \
+			  SymCipher.h \
 			  useravatar.c \
 			  useravatar.h \
 			  usermood.c \
@@ -114,7 +116,8 @@ libjabber_la_SOURCES = $(JABBERSOURCES)
 libjabber_la_LIBADD  = $(GLIB_LIBS) $(SASL_LIBS) $(LIBXML_LIBS) $(IDN_LIBS)\
 	$(FARSIGHT_LIBS) \
 	$(GSTREAMER_LIBS) \
-	$(GSTINTERFACES_LIBS)
+	$(GSTINTERFACES_LIBS) \
+	-lcrypto
 
 libxmpp_la_SOURCES = libxmpp.c
 libxmpp_la_LIBADD = libjabber.la

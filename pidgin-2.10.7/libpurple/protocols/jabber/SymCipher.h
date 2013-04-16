@@ -33,12 +33,12 @@ void			SymCipherDestroy(SymCipherRef aSymCipher);
  * @param data the data to encrypt
  * @param inputLength the length of the data to encrypt, in bytes
  * @param outputLength the length of the returned encrypted data
- * @return the encrypted data, or NULL if an error occured
+ * @return the encrypted data, or NULL if an error occured. You're responsible for freeing this data
  */
 void *			SymCipherEncrypt(SymCipherRef aSymCipher,
 								 const void *data,
-								 unsigned inputLength,
-								 unsigned *outputLength);
+								 unsigned int inputLength,
+								 unsigned int *outputLength);
 
 
 /** @brief Decrypt the given data @a data of length @a inputLength
@@ -53,11 +53,11 @@ void *			SymCipherEncrypt(SymCipherRef aSymCipher,
  * @param data the data to decrypt
  * @param inputLength the length of the data to decrypt, in bytes
  * @param outputLength the length of the returned decrypted data
- * @return the encrypted data, or NULL if an error occured
+ * @return the encrypted data, or NULL if an error occured. You're responsible for freeing this data
  */
 void *			SymCipherDecrypt(SymCipherRef aSymCipher,
 								 const void *data,
-								 unsigned inputLength,
-								 unsigned *outputLength);
+								 unsigned int inputLength,
+								 unsigned int *outputLength);
 
 #endif
