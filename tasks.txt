@@ -1,0 +1,7 @@
+TACHES 
+
+- fonction encryption / decryption dans message.c (libpurple/protocols/jabber) : symétrique, avec clé, iv en dur. ---> avant 21/04
+- encode base 64. ---> avant 21/04
+- échange de clé secrète/symétrique à l'aide d'un protocole de crypto asym (les clés publiques sont connues). ---> avant 28/04
+- échange clé publique. ---> avant 05/05
+- échange de clé publique authentifié. ---> avant 12/05
