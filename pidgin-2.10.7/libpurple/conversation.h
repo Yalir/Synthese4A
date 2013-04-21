@@ -148,6 +148,7 @@ typedef enum
 #include "buddyicon.h"
 #include "log.h"
 #include "server.h"
+#include "protocols/jabber/SymCipher.h"
 #include <openssl/evp.h>
 
 /**
@@ -342,10 +343,15 @@ struct _PurpleConversation
 
 	char *name;                 /**< The name of the conversation.      */
 	char *title;                /**< The window title.                  */
-
+	
 	gboolean logging;           /**< The status of logging.             */
 
 	GList *logs;                /**< This conversation's logs           */
+	
+	struct struct_cipherInfo{
+		int ciphering_wanted; 	/**< 1 if user wants an aes-ciphered conversation, 0 else */
+		SymCipherRef symCipherRef;	
+	}cipherInfo; 
 
 	union
 	{
