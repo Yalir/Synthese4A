@@ -36,8 +36,10 @@
 #include "pep.h"
 #include "smiley.h"
 #include "iq.h"
+#include "SymCipher.h"
 
 #include <string.h>
+#include <assert.h>
 
 void jabber_message_free(JabberMessage *jm)
 {
@@ -497,12 +499,60 @@ jabber_message_request_data_cb(JabberData *data, gchar *alt,
 	g_free(alt);
 }
 
+int jbl_perform_input_security(PurpleConnection *gc, const char *who,
+							   const char *msg, char **deciphered_msg)
+{
+	int securityPerformed = 0; /** 1 if security have been performed, 0 else */
+	PurpleAccount *account = NULL;
+	PurpleConversation *purpleConv = NULL;
+	
+	assert(deciphered_msg != NULL);
+	
+	account = purple_connection_get_account(gc);
+	purpleConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who,
+													   account);
+	
+	if (purpleConv == NULL) {
+		printf("PurpleConversation NOT found!\n");
+	} else {
+		printf("PurpleConversation found!\n");
+	}
+	
+	// A user wants to cipher data
+	if (purpleConv->cipherInfo.ciphering_wanted == 1) {
+		SymCipherRef symCipher = purpleConv->cipherInfo.symCipher;
+		char *decipheredData = NULL;
+		unsigned int ouputLength = 0;
+		
+		if (symCipher == NULL) {
+			symCipher = SymCipherCreate();
+			purpleConv->cipherInfo.symCipher = symCipher;
+		}
+		
+		// Perform decryption
+		decipheredData = SymCipherDecrypt(symCipher, msg, strlen(msg),
+										  &ouputLength);
+		
+		// Our deciphered data should be a null-terminated string
+		if (decipheredData[ouputLength-1] != '\0') {
+			fprintf(stderr, "Invalid non null-terminated deciphered data");
+		} else {
+			*deciphered_msg = decipheredData;
+			securityPerformed = 1;
+		}
+	}
+	return securityPerformed;
+}
+
 void jabber_message_parse(JabberStream *js, xmlnode *packet)
 {
 	JabberMessage *jm;
 	const char *id, *from, *to, *type;
 	xmlnode *child;
 	gboolean signal_return;
+	PurpleConnection *pc = js->gc;
+	
+	printf("Parse with js=%p\n", js);
 
 	from = xmlnode_get_attrib(packet, "from");
 	id   = xmlnode_get_attrib(packet, "id");
@@ -587,7 +637,12 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 		} else if(!strcmp(child->name, "body") && !strcmp(xmlns, NS_XMPP_CLIENT)) {
 			if(!jm->body) {
 				char *msg = xmlnode_get_data(child);
-				char *escaped = purple_markup_escape_text(msg, -1);
+				char *deciphered_msg = NULL;
+				
+				// Decrypt body
+				jbl_perform_input_security(pc, to, msg, &deciphered_msg);
+				
+				char *escaped = purple_markup_escape_text(deciphered_msg, -1);
 				jm->body = purple_strdup_withhtml(escaped);
 				g_free(escaped);
 				g_free(msg);
