@@ -145,27 +145,12 @@ common_send(PurpleConversation *conv, const char *message, PurpleMessageFlags ms
 	char *displayed = NULL, *sent = NULL;
 	int err = 0;
 
-	/* 
-	 * ENCRYPTION 
-	 */
 	
-	// Generate AES_KEY :
-	printf("Generating AES_KEY\n");
-	char *key = "thisisasecretkey";
-    AES_KEY aes_key;
 
-    if(AES_set_encrypt_key((unsigned char*) key, 128, &aes_key) != 0)
-            return EXIT_FAILURE;
-	
-	printf("AES_KEY generated\n");
-	
-	// Encrypting data :
-	char * data = "Random data, high as fuck";
-	printf("Encrypting data : %s\n", data);
-	unsigned char out[100];
-	AES_encrypt(message, out, &aes_key);
-	printf("Data encrypted\n");
-	
+	printf("Title of the conversarion: %s\n", conv->title);
+	printf("Name of the conversation: %s\n", conv->name);
+	printf("Password: %s\n", conv->account->password);
+
 	if (*message == '\0')
 		return;
 

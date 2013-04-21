@@ -36,6 +36,7 @@
 #include "pep.h"
 #include "smiley.h"
 #include "iq.h"
+#include "conversation.h"
 #include "SymCipher.h"
 
 #include <string.h>
@@ -520,13 +521,13 @@ int jbl_perform_input_security(PurpleConnection *gc, const char *who,
 	
 	// A user wants to cipher data
 	if (purpleConv->cipherInfo.ciphering_wanted == 1) {
-		SymCipherRef symCipher = purpleConv->cipherInfo.symCipher;
+		SymCipherRef symCipher = purpleConv->cipherInfo.symCipherRef;
 		char *decipheredData = NULL;
 		unsigned int ouputLength = 0;
 		
 		if (symCipher == NULL) {
 			symCipher = SymCipherCreate();
-			purpleConv->cipherInfo.symCipher = symCipher;
+			purpleConv->cipherInfo.symCipherRef = symCipher;
 		}
 		
 		// Perform decryption
@@ -1182,16 +1183,68 @@ jabber_xhtml_plain_equal(const char *xhtml_escaped,
 	return ret;
 }
 
+int jbl_perform_output_security(PurpleConnection *gc, const char *who, const char *msg, char ** ciphered_msg)
+{
+	int securityPerformed = 0; /** 1 if security have been performed, 0 else */
+	unsigned int ciphered_data_length = 0;
+	char *ciphered_data;
+	PurpleConversation *purpleConv = NULL;
+	SymCipherRef symCipherRef;
+	printf("Avant l'appel à 'purple_find_conversation_with_account' :\n");
+	printf("Purple Conversation Type: %d\n", PURPLE_CONV_TYPE_IM);
+	printf("Username: %s\n", gc->account->username);
+	purpleConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, gc->account);
+	
+	// On force la communication a etre cryptée :
+	purpleConv->cipherInfo.ciphering_wanted = 1;
+
+	if (purpleConv == NULL){
+		printf("PurpleConversation NOT found!\n");
+	}else{
+		printf("PurpleConversation found!\n");
+	}
+	
+	if(purpleConv->cipherInfo.ciphering_wanted == 1){// A user wants to cipher data
+		
+		/* CYPHERING */
+
+		securityPerformed = 1;
+
+		// Generate AES_KEY :
+		printf("Ciphering initialization...\n");
+		symCipherRef = SymCipherCreate();
+		purpleConv->cipherInfo.symCipherRef = symCipherRef;
+		printf("Ciphering data: %s\n", msg);
+		ciphered_data = SymCipherEncrypt(symCipherRef, msg, strlen(msg) + 1 , ciphered_data_length);
+
+		printf("Data cyphered: %s\n", ciphered_data);
+		*ciphered_msg = ciphered_data;
+	}
+	return securityPerformed;
+}
+
+/** Fonction qui se chargera de l'encryption. */
 int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *msg,
 		PurpleMessageFlags flags)
 {
+	PurpleConversation *purpleConv = NULL;
 	JabberMessage *jm;
 	JabberBuddy *jb;
 	JabberBuddyResource *jbr;
 	char *xhtml;
 	char *tmp;
 	char *resource;
+	char *ciphered_msg;
+	int securityPerformed = 0;
 
+	/** Do we need a ciphering */
+	printf("Ciphering needed?\n");
+	securityPerformed = jbl_perform_output_security(gc, who, msg, &ciphered_msg);
+	printf("Ciphering needed: %d\n", securityPerformed);
+	
+	if (securityPerformed == 1)
+		msg = ciphered_msg;
+	
 	if(!who || !msg)
 		return 0;
 
@@ -1227,7 +1280,12 @@ int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *ms
 		}
 	}
 
-	tmp = purple_utf8_strip_unprintables(msg);
+	if(securityPerformed == 0){
+		tmp = purple_utf8_strip_unprintables(msg);
+	}
+	else{ // securityPerformed = 1
+		tmp = purple_utf8_strip_unprintables(ciphered_msg);
+	}	
 	purple_markup_html_to_xhtml(tmp, &xhtml, &jm->body);
 	g_free(tmp);
 
