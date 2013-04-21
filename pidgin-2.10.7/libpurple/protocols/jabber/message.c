@@ -514,32 +514,32 @@ int jbl_perform_input_security(PurpleConnection *gc, const char *who,
 													   account);
 	
 	if (purpleConv == NULL) {
-		printf("PurpleConversation NOT found!\n");
+		printf("INPUT PurpleConversation NOT found for user %s!\n", who);
 	} else {
-		printf("PurpleConversation found!\n");
-	}
-	
-	// A user wants to cipher data
-	if (purpleConv->cipherInfo.ciphering_wanted == 1) {
-		SymCipherRef symCipher = purpleConv->cipherInfo.symCipherRef;
-		char *decipheredData = NULL;
-		unsigned int ouputLength = 0;
+		printf("INPUT PurpleConversation found for user %s!\n", who);
 		
-		if (symCipher == NULL) {
-			symCipher = SymCipherCreate();
-			purpleConv->cipherInfo.symCipherRef = symCipher;
-		}
-		
-		// Perform decryption
-		decipheredData = SymCipherDecrypt(symCipher, msg, strlen(msg),
-										  &ouputLength);
-		
-		// Our deciphered data should be a null-terminated string
-		if (decipheredData[ouputLength-1] != '\0') {
-			fprintf(stderr, "Invalid non null-terminated deciphered data");
-		} else {
-			*deciphered_msg = decipheredData;
-			securityPerformed = 1;
+		// A user wants to cipher data
+		if (purpleConv->cipherInfo.ciphering_wanted == 1) {
+			SymCipherRef symCipher = purpleConv->cipherInfo.symCipherRef;
+			char *decipheredData = NULL;
+			unsigned int ouputLength = 0;
+			
+			if (symCipher == NULL) {
+				symCipher = SymCipherCreate();
+				purpleConv->cipherInfo.symCipherRef = symCipher;
+			}
+			
+			// Perform decryption
+			decipheredData = SymCipherDecrypt(symCipher, msg, strlen(msg),
+											  &ouputLength);
+			
+			// Our deciphered data should be a null-terminated string
+			if (decipheredData[ouputLength-1] != '\0') {
+				fprintf(stderr, "Invalid non null-terminated deciphered data");
+			} else {
+				*deciphered_msg = decipheredData;
+				securityPerformed = 1;
+			}
 		}
 	}
 	return securityPerformed;
@@ -1198,10 +1198,10 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 	// On force la communication a etre cryptée :
 	purpleConv->cipherInfo.ciphering_wanted = 1;
 
-	if (purpleConv == NULL){
-		printf("PurpleConversation NOT found!\n");
-	}else{
-		printf("PurpleConversation found!\n");
+	if (purpleConv == NULL) {
+		printf("OUTPUT PurpleConversation NOT found for user %s!\n", who);
+	} else {
+		printf("OUTPUT PurpleConversation found for user %s!\n", who);
 	}
 	
 	if(purpleConv->cipherInfo.ciphering_wanted == 1){// A user wants to cipher data
@@ -1215,7 +1215,7 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 		symCipherRef = SymCipherCreate();
 		purpleConv->cipherInfo.symCipherRef = symCipherRef;
 		printf("Ciphering data: %s\n", msg);
-		ciphered_data = SymCipherEncrypt(symCipherRef, msg, strlen(msg) + 1 , ciphered_data_length);
+		ciphered_data = SymCipherEncrypt(symCipherRef, msg, strlen(msg) + 1 , &ciphered_data_length);
 
 		printf("Data cyphered: %s\n", ciphered_data);
 		*ciphered_msg = ciphered_data;
@@ -1227,7 +1227,6 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *msg,
 		PurpleMessageFlags flags)
 {
-	PurpleConversation *purpleConv = NULL;
 	JabberMessage *jm;
 	JabberBuddy *jb;
 	JabberBuddyResource *jbr;

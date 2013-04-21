@@ -68,9 +68,12 @@ void jabber_message_free(JabberMessage *jm);
 
 void jabber_message_send(JabberMessage *jm);
 
+int jbl_perform_input_security(PurpleConnection *gc, const char *who,
+							   const char *msg, char **deciphered_msg);
+
 void jabber_message_parse(JabberStream *js, xmlnode *packet);
 
-int jbl_perform_output_security(PurpleConnection *gc, const char *who, const char *msg, char * ciphered_msg);
+int jbl_perform_output_security(PurpleConnection *gc, const char *who, const char *msg, char **ciphered_msg);
 
 int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *msg,
 		PurpleMessageFlags flags);

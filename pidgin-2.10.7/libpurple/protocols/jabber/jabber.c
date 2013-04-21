@@ -620,6 +620,7 @@ void jabber_send(JabberStream *js, xmlnode *packet)
 	
 	puts("");
 	puts("=================================");
+	printf("Send with js=%p\n", js);
 	fprintf(stderr, "Jabber sent data:\n%s\n", formatted);
 	
 	g_free(formatted);
