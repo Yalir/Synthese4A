@@ -145,12 +145,12 @@ common_send(PurpleConversation *conv, const char *message, PurpleMessageFlags ms
 	char *displayed = NULL, *sent = NULL;
 	int err = 0;
 
-	
-
+	/*
 	printf("Title of the conversarion: %s\n", conv->title);
 	printf("Name of the conversation: %s\n", conv->name);
 	printf("Password: %s\n", conv->account->password);
-
+	 */
+	 
 	if (*message == '\0')
 		return;
 
@@ -974,8 +974,10 @@ purple_conversation_write(PurpleConversation *conv, const char *who,
 		who = purple_conversation_get_name(conv);
 	alias = who;
 	
+	/*
 	printf("who=%s\n", who);
 	printf("message=%s\n", message);
+	 */
 
 	plugin_return =
 		GPOINTER_TO_INT(purple_signal_emit_return_1(

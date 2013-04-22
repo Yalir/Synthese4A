@@ -510,11 +510,15 @@ int jbl_perform_input_security(PurpleConnection *gc, const char *who,
 	assert(deciphered_msg != NULL);
 	
 	account = purple_connection_get_account(gc);
+	printf("purple_find_conversation_with_account(%d, %s, %p (%s))\n",
+		   PURPLE_CONV_TYPE_IM, who, gc->account, gc->account->username);
 	purpleConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who,
 													   account);
 	
 	if (purpleConv == NULL) {
 		printf("INPUT PurpleConversation NOT found for user %s!\n", who);
+		*deciphered_msg = strdup("generated text");
+		securityPerformed = 1;
 	} else {
 		printf("INPUT PurpleConversation found for user %s!\n", who);
 		
@@ -553,7 +557,7 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 	gboolean signal_return;
 	PurpleConnection *pc = js->gc;
 	
-	printf("Parse with js=%p\n", js);
+	//printf("Parse with js=%p\n", js);
 
 	from = xmlnode_get_attrib(packet, "from");
 	id   = xmlnode_get_attrib(packet, "id");
@@ -641,7 +645,7 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 				char *deciphered_msg = NULL;
 				
 				// Decrypt body
-				jbl_perform_input_security(pc, to, msg, &deciphered_msg);
+				jbl_perform_input_security(pc, from, msg, &deciphered_msg);
 				
 				char *escaped = purple_markup_escape_text(deciphered_msg, -1);
 				jm->body = purple_strdup_withhtml(escaped);
@@ -1190,9 +1194,12 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 	char *ciphered_data;
 	PurpleConversation *purpleConv = NULL;
 	SymCipherRef symCipherRef;
-	printf("Avant l'appel à 'purple_find_conversation_with_account' :\n");
-	printf("Purple Conversation Type: %d\n", PURPLE_CONV_TYPE_IM);
-	printf("Username: %s\n", gc->account->username);
+	//printf("Avant l'appel à 'purple_find_conversation_with_account' :\n");
+	//printf("Purple Conversation Type: %d\n", PURPLE_CONV_TYPE_IM);
+	//printf("Username: %s\n", gc->account->username);
+	
+	printf("purple_find_conversation_with_account(%d, %s, %p (%s))\n",
+		   PURPLE_CONV_TYPE_IM, who, gc->account, gc->account->username);
 	purpleConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, gc->account);
 	
 	// On force la communication a etre cryptée :
@@ -1211,13 +1218,13 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 		securityPerformed = 1;
 
 		// Generate AES_KEY :
-		printf("Ciphering initialization...\n");
+		//printf("Ciphering initialization...\n");
 		symCipherRef = SymCipherCreate();
 		purpleConv->cipherInfo.symCipherRef = symCipherRef;
-		printf("Ciphering data: %s\n", msg);
+		//printf("Ciphering data: %s\n", msg);
 		ciphered_data = SymCipherEncrypt(symCipherRef, msg, strlen(msg) + 1 , &ciphered_data_length);
 
-		printf("Data cyphered: %s\n", ciphered_data);
+		//printf("Data cyphered: %s\n", ciphered_data);
 		*ciphered_msg = ciphered_data;
 	}
 	return securityPerformed;
@@ -1237,9 +1244,9 @@ int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *ms
 	int securityPerformed = 0;
 
 	/** Do we need a ciphering */
-	printf("Ciphering needed?\n");
+	//printf("Ciphering needed?\n");
 	securityPerformed = jbl_perform_output_security(gc, who, msg, &ciphered_msg);
-	printf("Ciphering needed: %d\n", securityPerformed);
+	//printf("Ciphering needed: %d\n", securityPerformed);
 	
 	if (securityPerformed == 1)
 		msg = ciphered_msg;
