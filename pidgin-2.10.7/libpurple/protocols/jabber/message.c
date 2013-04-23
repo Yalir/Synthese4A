@@ -522,27 +522,41 @@ int jbl_perform_input_security(PurpleConnection *gc, const char *who,
 	} else {
 		printf("INPUT PurpleConversation found for user %s!\n", who);
 		
+		purpleConv->cipherInfo.ciphering_wanted = 1;
+		
 		// A user wants to cipher data
 		if (purpleConv->cipherInfo.ciphering_wanted == 1) {
-			SymCipherRef symCipher = purpleConv->cipherInfo.symCipherRef;
+			SymCipherRef symCipher = NULL;
+			unsigned char *rawData = NULL;
+			unsigned long rawDataLength = 0;
 			char *decipheredData = NULL;
-			unsigned int ouputLength = 0;
+			unsigned int outputLength = 0;
 			
 			if (symCipher == NULL) {
 				symCipher = SymCipherCreate();
 				purpleConv->cipherInfo.symCipherRef = symCipher;
+			} else {
+				symCipher = purpleConv->cipherInfo.symCipherRef;
 			}
 			
-			// Perform decryption
-			decipheredData = SymCipherDecrypt(symCipher, msg, strlen(msg),
-											  &ouputLength);
+			printf("decode b64msg:%s\n", msg);
+			rawData = purple_base64_decode(msg, &rawDataLength);
 			
+			// Perform decryption
+			decipheredData = SymCipherDecrypt(symCipher, rawData, rawDataLength,
+											  &outputLength);
+			g_free(rawData);
+			
+			if (outputLength) {
 			// Our deciphered data should be a null-terminated string
-			if (decipheredData[ouputLength-1] != '\0') {
-				fprintf(stderr, "Invalid non null-terminated deciphered data");
+				if (decipheredData[outputLength-1] != '\0') {
+					fprintf(stderr, "Invalid non null-terminated deciphered data");
+				} else {
+					*deciphered_msg = decipheredData;
+					securityPerformed = 1;
+				}
 			} else {
-				*deciphered_msg = decipheredData;
-				securityPerformed = 1;
+				fprintf(stderr, "Invalid deciphered sequence");
 			}
 		}
 	}
@@ -1191,7 +1205,7 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 {
 	int securityPerformed = 0; /** 1 if security have been performed, 0 else */
 	unsigned int ciphered_data_length = 0;
-	char *ciphered_data;
+	unsigned char *ciphered_data;
 	PurpleConversation *purpleConv = NULL;
 	SymCipherRef symCipherRef;
 	//printf("Avant l'appel à 'purple_find_conversation_with_account' :\n");
@@ -1219,13 +1233,22 @@ int jbl_perform_output_security(PurpleConnection *gc, const char *who, const cha
 
 		// Generate AES_KEY :
 		//printf("Ciphering initialization...\n");
-		symCipherRef = SymCipherCreate();
-		purpleConv->cipherInfo.symCipherRef = symCipherRef;
+		if (purpleConv->cipherInfo.symCipherRef == NULL) {
+			symCipherRef = SymCipherCreate();
+			purpleConv->cipherInfo.symCipherRef = symCipherRef;
+		} else {
+			symCipherRef = purpleConv->cipherInfo.symCipherRef;
+		}
 		//printf("Ciphering data: %s\n", msg);
 		ciphered_data = SymCipherEncrypt(symCipherRef, msg, strlen(msg) + 1 , &ciphered_data_length);
-
+		
+		gchar *b64 = purple_base64_encode(ciphered_data, ciphered_data_length);
+		free(ciphered_data);
+		
+		printf("encoded b64msg:%s\n", b64);
+		
 		//printf("Data cyphered: %s\n", ciphered_data);
-		*ciphered_msg = ciphered_data;
+		*ciphered_msg = b64;
 	}
 	return securityPerformed;
 }

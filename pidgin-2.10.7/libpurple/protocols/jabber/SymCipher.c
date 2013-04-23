@@ -13,6 +13,14 @@ struct SymCipher_t {
 	
 };
 
+void printb(const char *data, unsigned int length)
+{
+	unsigned i;
+	for (i = 0;i < length;i++)
+		printf("%02x", data[i]);
+	puts("");
+}
+
 
 /**
  * Create an 128 bit key and IV using the supplied key_data. salt can be added for taste.
@@ -57,6 +65,8 @@ static void *aes_encrypt(EVP_CIPHER_CTX *encryption_ctx, const void *plaintext, 
 	EVP_EncryptFinal_ex(encryption_ctx, ciphertext+cipher_length, &final_length);
 	
 	*output_length = cipher_length + final_length;
+	puts("Encrypted:");
+	printb(ciphertext, *output_length);
 	return ciphertext;
 }
 
@@ -65,6 +75,9 @@ static void *aes_encrypt(EVP_CIPHER_CTX *encryption_ctx, const void *plaintext, 
  */
 static void *aes_decrypt(EVP_CIPHER_CTX *decryption_ctx, const void *ciphertext, unsigned int input_length, unsigned int *output_length)
 {
+	puts("Decrypt:");
+	printb(ciphertext, input_length);
+	
 	/* because we have padding ON, we must allocate an extra cipher block size of memory */
 	int myoutput_length = input_length, final_length = 0;
 	void *plaintext = malloc(myoutput_length + AES_BLOCK_SIZE);
@@ -73,7 +86,10 @@ static void *aes_decrypt(EVP_CIPHER_CTX *decryption_ctx, const void *ciphertext,
 	EVP_DecryptUpdate(decryption_ctx, plaintext, &myoutput_length, ciphertext, input_length);
 	EVP_DecryptFinal_ex(decryption_ctx, plaintext+myoutput_length, &final_length);
 	
+	printf("myoutput_length=%d\n", myoutput_length);
+	printf("final_length=%d\n", final_length);
 	*output_length = myoutput_length + final_length;
+	
 	return plaintext;
 }
 
