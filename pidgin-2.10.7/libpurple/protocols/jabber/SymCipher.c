@@ -17,7 +17,7 @@ void printb(const char *data, unsigned int length)
 {
 	unsigned i;
 	for (i = 0;i < length;i++)
-		printf("%02x", data[i]);
+		printf("%.02x ", (unsigned char)data[i]);
 	puts("");
 }
 
@@ -142,5 +142,5 @@ void *			SymCipherDecrypt(SymCipherRef aSymCipher,
 	assert(inputLength > 0);
 	assert(outputLength != NULL);
 	
-	return aes_decrypt(&aSymCipher->encryption_ctx, data, inputLength, outputLength);
+	return aes_decrypt(&aSymCipher->decryption_ctx, data, inputLength, outputLength);
 }
