@@ -4,23 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <glib.h>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 
 struct SymCipher_t {
 	EVP_CIPHER_CTX encryption_ctx;
 	EVP_CIPHER_CTX decryption_ctx;
-	
 };
-
-void printb(const char *data, unsigned int length)
-{
-	unsigned i;
-	for (i = 0;i < length;i++)
-		printf("%.02x ", (unsigned char)data[i]);
-	puts("");
-}
-
 
 /**
  * Create an 128 bit key and IV using the supplied key_data. salt can be added for taste.
@@ -52,7 +43,7 @@ static void *aes_encrypt(EVP_CIPHER_CTX *encryption_ctx, const void *plaintext, 
 {
 	/* max ciphertext len for a n bytes of plaintext is n + AES_BLOCK_SIZE -1 bytes */
 	int cipher_length = input_length + AES_BLOCK_SIZE, final_length = 0;
-	void *ciphertext = malloc(cipher_length);
+	void *ciphertext = g_malloc(cipher_length);
 	
 	/* allows reusing of 'e' for multiple encryption cycles */
 	EVP_EncryptInit_ex(encryption_ctx, NULL, NULL, NULL, NULL);
@@ -65,8 +56,6 @@ static void *aes_encrypt(EVP_CIPHER_CTX *encryption_ctx, const void *plaintext, 
 	EVP_EncryptFinal_ex(encryption_ctx, ciphertext+cipher_length, &final_length);
 	
 	*output_length = cipher_length + final_length;
-	puts("Encrypted:");
-	printb(ciphertext, *output_length);
 	return ciphertext;
 }
 
@@ -74,20 +63,15 @@ static void *aes_encrypt(EVP_CIPHER_CTX *encryption_ctx, const void *plaintext, 
  * Decrypt *len bytes of ciphertext
  */
 static void *aes_decrypt(EVP_CIPHER_CTX *decryption_ctx, const void *ciphertext, unsigned int input_length, unsigned int *output_length)
-{
-	puts("Decrypt:");
-	printb(ciphertext, input_length);
-	
+{	
 	/* because we have padding ON, we must allocate an extra cipher block size of memory */
 	int myoutput_length = input_length, final_length = 0;
-	void *plaintext = malloc(myoutput_length + AES_BLOCK_SIZE);
+	void *plaintext = g_malloc(myoutput_length + AES_BLOCK_SIZE);
 	
 	EVP_DecryptInit_ex(decryption_ctx, NULL, NULL, NULL, NULL);
 	EVP_DecryptUpdate(decryption_ctx, plaintext, &myoutput_length, ciphertext, input_length);
 	EVP_DecryptFinal_ex(decryption_ctx, plaintext+myoutput_length, &final_length);
 	
-	printf("myoutput_length=%d\n", myoutput_length);
-	printf("final_length=%d\n", final_length);
 	*output_length = myoutput_length + final_length;
 	
 	return plaintext;
@@ -95,10 +79,12 @@ static void *aes_decrypt(EVP_CIPHER_CTX *decryption_ctx, const void *ciphertext,
 
 SymCipherRef	SymCipherCreate(void)
 {
-	SymCipherRef newCipher = malloc(sizeof(*newCipher));
+	SymCipherRef newCipher = g_malloc(sizeof(*newCipher));
 	
 	if (newCipher != NULL)
 	{
+		memset(newCipher, 0, sizeof(*newCipher));
+		
 		int err = aes_init(&newCipher->encryption_ctx, &newCipher->decryption_ctx);
 		
 		if (err != 0)
