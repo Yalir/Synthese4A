@@ -36,8 +36,6 @@
 
 #define SEND_TYPED_TIMEOUT_SECONDS 5
 
-/** THIS IS IT, NOW BEGIN */
-
 static GList *conversations = NULL;
 static GList *ims = NULL;
 static GList *chats = NULL;
@@ -144,12 +142,6 @@ common_send(PurpleConversation *conv, const char *message, PurpleMessageFlags ms
 	PurpleConnection *gc;
 	char *displayed = NULL, *sent = NULL;
 	int err = 0;
-
-	/*
-	printf("Title of the conversarion: %s\n", conv->title);
-	printf("Name of the conversation: %s\n", conv->name);
-	printf("Password: %s\n", conv->account->password);
-	 */
 	 
 	if (*message == '\0')
 		return;

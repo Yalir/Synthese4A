@@ -38,6 +38,7 @@
 #include "iq.h"
 #include "conversation.h"
 #include "SymCipher.h"
+#include "AsymCipher.h"
 
 #include <string.h>
 #include <assert.h>
@@ -1155,6 +1156,8 @@ int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *ms
 	
 	if (strcmp(msg, ":encrypt=1") == 0) {
 		jbl_set_output_security_enabled(gc, who, TRUE);
+		// Echange du secret avec RSA:
+		
 		return 0;
 	} else if (strcmp(msg, ":encrypt=0") == 0) {
 		jbl_set_output_security_enabled(gc, who, FALSE);
