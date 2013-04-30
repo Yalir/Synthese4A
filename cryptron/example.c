@@ -55,16 +55,14 @@ int processor(int iteration) {
         char *hex_pub = NULL, *hex_priv = NULL;
         unsigned char *text = NULL, *copy = NULL, *original = NULL;
 
-        // Generate random size for the block of data were going to encrypt. 
-Use a min value of 1 KB and a max of 1 MB.
+        // Generate random size for the block of data were going to encrypt. Use a min value of 1 KB and a max of 1 MB.
         do {
                 tlen = (rand() % (1024 * 1024));
         } while (tlen < 1024);
 
         if (!(text = malloc(tlen + 1)) || !(copy = malloc(tlen + 1))) {
                 printf("Memory error.\n");
-                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
                 return -1;
         }
 
@@ -78,45 +76,36 @@ original);
         // Generate a key for our theoretical user.
         if (!(key = ecies_key_create())) {
                 printf("Key creation failed.\n");
-                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
                 return -1;
         }
 
-        // Since we'll store the keys as hex values in reali life, extract the 
-appropriate hex values and release the original key structure.
-        if (!(hex_pub = ecies_key_public_get_hex(key)) || !(hex_priv = 
-ecies_key_private_get_hex(key))) {
-                printf("Serialization of the key to a pair of hex strings 
-failed.\n");
-                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+        // Since we'll store the keys as hex values in reali life, extract the appropriate hex values and release the original key structure.
+        if (!(hex_pub = ecies_key_public_get_hex(key)) || !(hex_priv = ecies_key_private_get_hex(key))) {
+                printf("Serialization of the key to a pair of hex strings failed.\n");
+                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
                 return -1;
         }
 
         if (!(ciphered = ecies_encrypt(hex_pub, text, tlen))) {
                 printf("The encryption process failed!\n");
-                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
                 return -1;
         }
 
         if (!(original = ecies_decrypt(hex_priv, ciphered, &olen))) {
                 printf("The decryption process failed!\n");
-                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
                 return -1;
         }
 
         if (olen != tlen || memcmp(original, copy, tlen)) {
                 printf("Comparison failure.\n");
-                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+                processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
                 return -1;
         }
 
-        processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, 
-original);
+        processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
         printf(" ... %i ... %i\n", iteration + 1, tlen);
 
         return 0;
@@ -126,10 +115,8 @@ void main_cleanup(void) {
 
         ecies_group_free();
 
-        // As a child I was taught that your done eating until your plate is 
-completely clean.
-        // The following should release _all_ of the memory allocated by the 
-OpenSSL functions used.
+        // As a child I was taught that your done eating until your plate is completely clean.
+        // The following should release _all_ of the memory allocated by the OpenSSL functions used.
         EVP_cleanup();
         CRYPTO_cleanup_all_ex_data();
         ERR_free_strings();
@@ -144,12 +131,10 @@ int main() {
         SSL_library_init();
         SSL_load_error_strings();
 
-        // Initializing the group once up front cut execution time in half! 
-However the code should function without a reusable group.
+        // Initializing the group once up front cut execution time in half! However the code should function without a reusable group.
         ecies_group_init();
 
-        // Comment this line out if you want the program to execute 
-consistently each time.
+        // Comment this line out if you want the program to execute consistently each time.
         srand(time(NULL));
 
         for (uint64_t i = 0; i < 100; i++) {
