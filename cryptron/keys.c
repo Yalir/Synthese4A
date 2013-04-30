@@ -19,13 +19,11 @@ void ecies_group_init(void) {
         EC_GROUP *group;
 
         if (!(group = EC_GROUP_new_by_curve_name(ECIES_CURVE))) {
-                printf("EC_GROUP_new_by_curve_name failed. {error = %s}\n", 
-ERR_error_string(ERR_get_error(), NULL));
+                printf("EC_GROUP_new_by_curve_name failed. {error = %s}\n", ERR_error_string(ERR_get_error(), NULL));
         }
 
         else if (EC_GROUP_precompute_mult(group, NULL) != 1) {
-                printf("EC_GROUP_precompute_mult failed. {error = %s}\n", 
-ERR_error_string(ERR_get_error(), NULL));
+                printf("EC_GROUP_precompute_mult failed. {error = %s}\n", ERR_error_string(ERR_get_error(), NULL));
                 EC_GROUP_free(group);
         }
 
@@ -45,10 +43,8 @@ void ecies_group_free(void) {
         return;
 }
 
-// This is not thread-safe! You'll need to use a mutex if you want this to work 
-in a multi-threaded world.
-// But its worth noting that duplicating the group instead of allocating it on 
-each pass reduced the execution time by 50%!
+// This is not thread-safe! You'll need to use a mutex if you want this to work in a multi-threaded world.
+// But its worth noting that duplicating the group instead of allocating it on each pass reduced the execution time by 50%!
 EC_GROUP * ecies_group(void) {
 
         EC_GROUP *group;
