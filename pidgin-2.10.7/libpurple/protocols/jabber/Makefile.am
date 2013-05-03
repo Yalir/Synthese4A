@@ -23,6 +23,10 @@ JABBERSOURCES = \
 			  caps.h \
 			  chat.c \
 			  chat.h \
+			  cryptron/ecies.c \
+			  cryptron/ecies.h \
+			  cryptron/keys.c \
+			  cryptron/secure.c \
 			  data.c \
 			  data.h \
 			  disco.c \
