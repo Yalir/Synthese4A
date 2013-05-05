@@ -311,7 +311,6 @@ libpurple_la_LIBADD = \
 	$(GSTINTERFACES_LIBS) \
 	$(IDN_LIBS) \
 	ciphers/libpurple-ciphers.la \
-	-lcrypto \
 	-lm
 
 AM_CPPFLAGS = \

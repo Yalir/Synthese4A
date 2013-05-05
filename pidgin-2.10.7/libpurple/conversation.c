@@ -32,7 +32,6 @@
 #include "request.h"
 #include "signals.h"
 #include "util.h"
-#include <openssl/aes.h>
 
 #define SEND_TYPED_TIMEOUT_SECONDS 5
 

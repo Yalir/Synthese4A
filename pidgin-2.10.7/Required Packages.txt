@@ -1,0 +1,10 @@
+
+libavahi-client-dev
+libidn11-dev
+libgtkspell-dev
+libgtk2.0-dev
+libxml2-dev
+libperl-dev
+libgnutls-dev
+tcl-dev
+tk-dev

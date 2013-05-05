@@ -149,7 +149,6 @@ typedef enum
 #include "log.h"
 #include "server.h"
 #include "protocols/jabber/SymCipher.h"
-#include <openssl/evp.h>
 
 /**
  * Conversation operations and events.
