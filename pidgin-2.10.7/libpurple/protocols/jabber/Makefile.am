@@ -23,10 +23,6 @@ JABBERSOURCES = \
 			  caps.h \
 			  chat.c \
 			  chat.h \
-			  cryptron/ecies.c \
-			  cryptron/ecies.h \
-			  cryptron/keys.c \
-			  cryptron/secure.c \
 			  data.c \
 			  data.h \
 			  disco.c \
@@ -51,6 +47,16 @@ JABBERSOURCES = \
 			  iq.h \
 			  jabber.c \
 			  jabber.h \
+			  jbl/AsymCipher.c \
+			  jbl/AsymCipher.h \
+			  jbl/cryptron/ecies.c \
+			  jbl/cryptron/ecies.h \
+			  jbl/cryptron/keys.c \
+			  jbl/cryptron/secure.c \
+			  jbl/ProtocolHandler.c \
+			  jbl/ProtocolHandler.h \
+			  jbl/SymCipher.c \
+			  jbl/SymCipher.h \
 			  jingle/jingle.c \
 			  jingle/jingle.h \
 			  jingle/content.c \
@@ -84,8 +90,6 @@ JABBERSOURCES = \
 			  roster.h \
 			  si.c \
 			  si.h \
-			  SymCipher.c \
-			  SymCipher.h \
 			  useravatar.c \
 			  useravatar.h \
 			  usermood.c \
