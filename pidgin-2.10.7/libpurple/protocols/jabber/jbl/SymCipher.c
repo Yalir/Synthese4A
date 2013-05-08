@@ -79,12 +79,10 @@ static void *aes_decrypt(EVP_CIPHER_CTX *decryption_ctx, const void *ciphertext,
 
 SymCipherRef	SymCipherCreate(void)
 {
-	SymCipherRef newCipher = g_malloc(sizeof(*newCipher));
+	SymCipherRef newCipher = g_malloc0(sizeof(*newCipher));
 	
 	if (newCipher != NULL)
 	{
-		memset(newCipher, 0, sizeof(*newCipher));
-		
 		int err = aes_init(&newCipher->encryption_ctx, &newCipher->decryption_ctx);
 		
 		if (err != 0)
@@ -102,7 +100,7 @@ void			SymCipherDestroy(SymCipherRef aSymCipher)
 	
 	EVP_CIPHER_CTX_cleanup(&aSymCipher->encryption_ctx);
 	EVP_CIPHER_CTX_cleanup(&aSymCipher->decryption_ctx);
-	free(aSymCipher);
+	g_free(aSymCipher);
 }
 
 void *			SymCipherEncrypt(SymCipherRef aSymCipher,
