@@ -1,3 +1,4 @@
+#!/bin/sh
 
 CC=clang
 GLIB_FLAGS=`pkg-config --cflags --libs glib-2.0`
