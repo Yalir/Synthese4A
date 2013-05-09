@@ -5,10 +5,11 @@
 typedef struct AsymCipher_t *AsymCipherRef;
 
 
-#warning AsymCipherRef AsymCipherCreate(void);
+//#warning AsymCipherRef AsymCipherCreate(void);
 #warning AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key);
 #warning AsymCipherRef AsymCipherCreateWithKeyPair(char *priv_key, char *pub_key);
-#warning AsymCipherRef AsymCipherGenerateKeyPair(AsymCipherRef asymCipher);
+#warning AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(void);
+//#warning AsymCipherRef AsymCipherGenerateKeyPair(AsymCipherRef asymCipher);
 
 /** @brief Create a new asymetric cipher handle
  *
