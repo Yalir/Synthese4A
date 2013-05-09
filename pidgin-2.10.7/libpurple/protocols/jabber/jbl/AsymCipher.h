@@ -3,13 +3,20 @@
 #define ASYMCIPHER_H
 
 typedef struct AsymCipher_t *AsymCipherRef;
+typedef char * secure_t;
 	
 
 /** @brief Create a new asymetric cipher handle
  *
  * @return a ready to used cipher object, or NULL is an error occured
  */
-AsymCipherRef	AsymCipherCreate(void);
+AsymCipherRef AsymCipher_CreateWithPublicKey(void);
+
+/** @brief Create a new asymetric cipher handle
+ *
+ * @return a ready to used cipher object, or NULL is an error occured
+ */
+AsymCipherRef AsymCipher_CreateWithKeyPair(void);
 
 
 /** @brief Destroy a asymetric cipher handle
@@ -19,7 +26,7 @@ AsymCipherRef	AsymCipherCreate(void);
  *
  * @param aAsymCipher the cipher handle to destroy
  */
-void			AsymCipherDestroy(AsymCipherRef aSymCipher);
+void AsymCipher_Destroy(AsymCipherRef p_AsymCipher);
 
 
 /** @brief Encrypt the given data @a data of length @a inputLength
@@ -36,10 +43,8 @@ void			AsymCipherDestroy(AsymCipherRef aSymCipher);
  * @param outputLength the length of the returned encrypted data
  * @return the encrypted data, or NULL if an error occured. You're responsible for g_freeing this data
  */
-void *			AsymCipherEncrypt(AsymCipherRef aAsymCipher,
-								  const void *data,
-								  unsigned int inputLength,
-								  unsigned int *outputLength);
+void * AsymCipher_Encrypt(AsymCipherRef p_AsymCipher, const void *data,
+                         unsigned int inputLength, unsigned int *outputLength);
 
 
 /** @brief Decrypt the given data @a data of length @a inputLength
@@ -56,10 +61,12 @@ void *			AsymCipherEncrypt(AsymCipherRef aAsymCipher,
  * @param outputLength the length of the returned decrypted data
  * @return the encrypted data, or NULL if an error occured. You're responsible for g_freeing this data
  */
-void *			AsymCipherDecrypt(AsymCipherRef aAsymCipher,
-								  const void *data,
-								  unsigned int inputLength,
-								  unsigned int *outputLength);
+void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
+                         unsigned int inputLength, unsigned int *outputLength);
 
+char * AsymCipher_getHexPubKey(AsymCipherRef p_AsymCipher);
+char * AsymCipher_getHexPrivKey(AsymCipherRef p_AsymCipher);
+void AsymCipher_setHexPubKey(AsymCipherRef p_AsymCipher, char * hex_pub);
+void AsymCipher_setHexPrivKey(AsymCipherRef p_AsymCipher, char * hex_priv);
 
 #endif
