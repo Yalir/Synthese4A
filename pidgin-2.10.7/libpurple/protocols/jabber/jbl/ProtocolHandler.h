@@ -26,14 +26,15 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * - 1: stop encryption, disable JBL protocol and switch back to classic
  * communication immediately
  * - 2: public key request. No other data.
- * - 3: public key answer. Data contains the public key as hexadecimal string
- * or NOK if the public key hasn't been accepted.
- * - 4: public key already known.
- * - 5: secret key transmission. Data contains the secret key encrypted with
+ * - 3: public key message. Data contains the public key as hexadecimal string.
+ * - 4: public key answer. Data contains OK or NOK depending on public key
+ * acceptation.
+ * - 5: public key already known.
+ * - 6: secret key transmission. Data contains the secret key encrypted with
  * the peer public key.
- * - 6: secret key answer. Data contains either OK or NOK to acknowledge for
+ * - 7: secret key answer. Data contains either OK or NOK to acknowledge for
  * secret key reception and decryption.
- * - 7: encrypted message. Data contains the encrypted message.
+ * - 8: encrypted message. Data contains the encrypted message.
  *
  *
  * === Protocol ===
@@ -47,17 +48,19 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * 4. If A already knows B's public key, A sends a public-key-already-known
  * message to B then go to step 7
  * 5. A sends a public key request to B.
- * 6. B chooses whether to accept A's public key then sends a public key answer
- * to A.
- * 7. If B already knows A's public key, B sends a public-key-already-known
- * message to A then go to step 10
- * 8. B sends a public key request to A.
- * 9. A chooses whether to accept B's public key then sends a public key answer
+ * 6. B sends its public key to A.
+ * 7. A chooses whether to accept B's public key then sends a public key answer
  * to B.
- * 10. A creates a secret key
- * 11. A sends the secret key to B, encrypted with B's public key, signed with
+ * 8. If B already knows A's public key, B sends a public-key-already-known
+ * message to A then go to step 10
+ * 9. B sends a public key request to A.
+ * 10. A sends its public key to B.
+ * 11. B chooses whether to accept A's public key then sends a public key answer
+ * to A.
+ * 12. A creates a secret key
+ * 13. A sends the secret key to B, encrypted with B's public key, signed with
  * A's private key
- * 12. B sends a secret key answer to A, signed with B's private key
+ * 14. B sends a secret key answer to A, signed with B's private key
  *
  * On failure, the communication switches back to the classical text mode.
  * On success, the messages are sent in the same raw mode with prefix code 7
@@ -114,7 +117,7 @@ void                ProtocolHandlerDestroy(ProtocolHandlerRef aHandler);
 gboolean            ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
                                                PurpleConnection *gc,
                                                const char *who,
-                                               char *original_msg,
+                                               const char *original_msg,
                                                char **modified_input_msg);
 
 /** Process an about-to-be-sent Jabber message and eventually modify it

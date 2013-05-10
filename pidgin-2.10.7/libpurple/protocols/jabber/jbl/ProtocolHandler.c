@@ -1,6 +1,7 @@
 
 #include "../../../connection.h"
 #include "ProtocolHandler.h"
+#include "ProtocolHandlerPriv.h"
 #include "AsymCipher.h"
 #include "SymCipher.h"
 #include <string.h>
@@ -9,16 +10,22 @@
 #include <assert.h>
 #include <glib.h>
 
+#pragma mark MessageHandlerTab
+static MessageHandler messageHandlers[EndEnumCode] =
+{
+	BadMessageHandler,             // 0
+	StopEncryptionHandler,         // 1
+	PublicKeyRequestHandler,       // 2
+	PublicKeyMessageHandler,       // 3
+	PublicKeyAnswerHandler,        // 4
+	PublicKeyAlreadyKnownHandler,  // 5
+	SecretKeySendingHandler,       // 6
+	SecretKeyAnswerHandler,        // 7
+	EncryptedUserMessageHandler,   // 8
+};
 
-#pragma mark RawMessage
-
-typedef struct {
-	unsigned char code;
-	const void *data;
-	unsigned int dataLength;
-} RawMessage;
-
-static unsigned char *RawMessagePack(RawMessage message)
+// Serialize a message with the given structure
+static char *StructuredMessagePack(StructuredMessage message)
 {
 	void *finalBuffer = g_malloc(message.dataLength + 1);
 	
@@ -28,34 +35,42 @@ static unsigned char *RawMessagePack(RawMessage message)
 	if (message.dataLength > 0)
 		memcpy(finalBuffer + 1, message.data, message.dataLength);
 	
-	return purple_base64_encode(finalBuffer, message.dataLength + 1);
+	gchar *encoded = purple_base64_encode(finalBuffer, message.dataLength + 1);
+	g_free(finalBuffer);
+	
+	return encoded;
 }
 
-static RawMessage RawMessageExtract(const unsigned char *b64Data)
+// Deserialize a StructuredMessage from the given base64 data
+static StructuredMessage StructuredMessageExtract(const char *b64Data, gboolean *success)
 {
 	assert(b64Data != NULL);
-	RawMessage message = {0, NULL, 0};
+	assert(success != NULL);
+	
+	StructuredMessage message = {0, NULL, 0};
 	
 	gsize decodedLength = 0;
 	guchar *decoded = purple_base64_decode(b64Data, &decodedLength);
 	
-	assert(decodedLength > 0);
-	memcpy(&message.code, decoded, 1);
-	
-	if (decodedLength > 1) {
-		message.data = g_malloc(decodedLength-1);
-		memcpy(message.data, decoded + 1, decodedLength-1);
-		message.dataLength = decodedLength-1;
+	if (0 == decodedLength)
+		*success = FALSE;
+	else {
+		*success = TRUE;
+		memcpy(&message.code, decoded, 1);
+		
+		if (decodedLength > 1) {
+			message.data = g_malloc(decodedLength-1);
+			memcpy(message.data, decoded + 1, decodedLength-1);
+			message.dataLength = decodedLength-1;
+		}
 	}
+	
+	g_free(decoded);
 	
 	return message;
 }
 
-typedef enum {
-	AbortCode = 1
-} ProtocolCode;
-
-static void RawMessageDestroy(RawMessage message)
+static void StructuredMessageDestroy(StructuredMessage message)
 {
 	if (message.data) g_free(message.data);
 }
@@ -65,39 +80,13 @@ static void RawMessageDestroy(RawMessage message)
 #pragma mark Protocol handler
 #pragma mark
 
-#pragma mark Protocol private function declarations
-static void ProtocolHandlerDisable(ProtocolHandlerRef aHandler);
-static void ProtocolHandlerEnable(ProtocolHandlerRef,
-								  PurpleConnection *gc,
-								  const char *who,
-								  char *original_msg,
-								  char **modified_input_msg);
-
-#pragma mark Protocol steps
-
-typedef enum {
-	NotYetStartedStep = 0,
-	LetsEnableEncryptionRequestStep = 2,
-	LetsEnableEncryptionAnswerStep = 3, // after this step, use raw messages
-	ItsPublicKeyIsKnownStep = 4,
-	ItsPublicKeyRequestStep = 5,
-	ItsPublicKeyAnswerStep = 6,
-	MyPublicKeyIsKnownStep = 7,
-	MyPublicKeyRequestStep = 8,
-	MyPublicKeyAnswerStep = 9,
-	CreateSecretStep = 10,
-	SecretKeySendingStep = 11,
-	SecretKeyAnswerStep = 12,
-	EncryptionIsEnabledStep = 13
-} ProtocolStep;
-
-
 #pragma mark Protocol strings
 
-static const char *LetsEnableEncryptionRequestString = ":lets-enable-encryption";
-static const char *LetsEnableEncryptionOkAnswerString = ":ok-lets-encrypt";
-static const char *LetsEnableEncryptionNokAnswerString = ":no-i-dont-want-to";
-
+const char *LetsEnableEncryptionRequestString = ":lets-enable-encryption";
+const char *LetsEnableEncryptionOkAnswerString = ":ok-lets-encrypt";
+const char *LetsEnableEncryptionNokAnswerString = ":no-i-dont-want-to";
+const char *NOKString = "NOK";
+const char *OKString = "OK";
 
 #pragma mark Protocol struct
 
@@ -140,7 +129,7 @@ void ProtocolHandlerDestroy(ProtocolHandlerRef aHandler)
 gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
                                     PurpleConnection *gc,
                                     const char *who,
-                                    char *original_msg,
+                                    const char *original_msg,
                                     char **modified_input_msg)
 {
 	assert(aHandler != NULL);
@@ -155,7 +144,7 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 	(PURPLE_CONV_TYPE_IM, who, gc->account);
 	
 	if (!conv) {
-		fprintf("ProtocolHandlerHandleInput: Could not find conv for %s\n",
+		fprintf(stderr, "ProtocolHandlerHandleInput: Could not find conv for %s\n",
 				who);
 		return FALSE;
 	}
@@ -189,9 +178,34 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 			
 			// Skip step 4 (assume we never know the public key)
 			// Do step 5
-			RawMessage msg = {};
+			StructuredMessage msg = {PublicKeyRequestCode, NULL, 0};
+			char *data = StructuredMessagePack(msg);
+			
+			purple_conv_im_send(PURPLE_CONV_IM(conv), (const char *)data);
+			g_free(data);
+			aHandler->validatedStep = ItsPublicKeyRequestStep;
+			*modified_input_msg = NULL;
+			return TRUE;
+		}
+	} else {
+		gboolean success;
+		StructuredMessage structured = StructuredMessageExtract(original_msg,
+																&success);
+		if (success) {
+			if (structured.code > 0 && structured.code < EndEnumCode) {
+				messageHandlers[structured.code](aHandler, structured,
+												 conv, who, modified_input_msg);
+			} else {
+				*modified_input_msg = strdup(original_msg);
+				return FALSE;
+			}
+		} else {
+			*modified_input_msg = strdup(original_msg);
+			return FALSE;
 		}
 	}
+	
+	return FALSE;
 }
 
 gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
@@ -245,27 +259,27 @@ static void ProtocolHandlerDisable(ProtocolHandlerRef aHandler)
 		aHandler->symCipher = NULL;
 	}
 	
+	aHandler->validatedStep = NotYetStartedStep;
 	aHandler->encryption_enabled = FALSE;
 }
 
-static gboolean ProtocolHandlerEnable(ProtocolHandlerRef,
+static void ProtocolHandlerEnable(ProtocolHandlerRef aHandler,
 						   PurpleConnection *gc,
 						   const char *who,
-						   char *original_msg,
+						   const char *original_msg,
 						   char **modified_input_msg)
 {
 	assert(aHandler != NULL);
 	
 	if (aHandler->encryption_enabled == TRUE)
-		return TRUE;
+		return;
 	
 	assert(aHandler->peerAsymCipher == NULL);
 	assert(aHandler->symCipher == NULL);
-	gboolean success = FALSE;
 	
 	if (aHandler->validatedStep != NotYetStartedStep) {
-		fprint(stderr, "JBL Error: trying to initiate JBL protocol but it has already been started\n");
-		return FALSE;
+		fprintf(stderr, "JBL Error: trying to initiate JBL protocol but it has already been started\n");
+		return;
 	}
 	
 	// Now we miss the peer's pub key and a secret key, initiate
@@ -274,8 +288,11 @@ static gboolean ProtocolHandlerEnable(ProtocolHandlerRef,
 	PurpleConversation *conv = purple_find_conversation_with_account
 	(PURPLE_CONV_TYPE_IM, who, gc->account);
 	
-	if (!conv)
-		return FALSE;
+	if (!conv) {
+		fprintf(stderr, "ProtocolHandlerHandleInput: Could not find conv for %s\n",
+				who);
+		return;
+	}
 	
 	// Step 2
 	purple_conv_im_send(PURPLE_CONV_IM(conv), LetsEnableEncryptionRequestString);
@@ -283,4 +300,180 @@ static gboolean ProtocolHandlerEnable(ProtocolHandlerRef,
 	
 	// End of it for now
 }
+
+
+#pragma mark Message handlers
+static void BadMessageHandler(ProtocolHandlerRef aHandler,
+							  StructuredMessage structured,
+							  PurpleConversation *conv,
+							  const char *who,
+							  char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+	
+	fprintf(stderr, "BadMessageHandler\n");
+	assert(FALSE);
+}
+
+static void StopEncryptionHandler(ProtocolHandlerRef aHandler,
+								  StructuredMessage structured,
+								  PurpleConversation *conv,
+								  const char *who,
+								  char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+	
+	ProtocolHandlerDisable(aHandler);
+	*modified_input_msg = NULL;
+	aHandler->validatedStep = NotYetStartedStep;
+}
+
+static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
+									StructuredMessage yourStructured,
+									PurpleConversation *conv,
+									const char *who,
+									char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+	
+	// Gather our pub key
+	const char *hexPub = AsymCipherGetPublicKey(aHandler->localAsymCipher);
+	unsigned hexPubLength = strlen(hexPub) + 1;
+	
+	// Serialize message
+	StructuredMessage structured = {PublicKeyAnswerCode, strdup(hexPub), hexPubLength};
+	char *serialized = StructuredMessagePack(structured);
+	StructuredMessageDestroy(structured);
+	
+	// Send it
+	purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
+	
+	// Clean
+	g_free(serialized);
+	*modified_input_msg = NULL;
+	aHandler->validatedStep = MyPublicKeyMessageStep;
+}
+
+static void PublicKeyMessageHandler(ProtocolHandlerRef aHandler,
+									StructuredMessage structured,
+									PurpleConversation *conv,
+									const char *who,
+									char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+	
+	// If he sends a pub key and we didn't ask for one
+	if (aHandler->validatedStep != ItsPublicKeyRequestStep) {
+		// Serialize message
+		StructuredMessage structured =
+		{PublicKeyAnswerCode, strdup(NOKString), strlen(NOKString)+1};
+		char *serialized = StructuredMessagePack(structured);
+		StructuredMessageDestroy(structured);
+		
+		// Send it
+		purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
+		
+		// Clean
+		g_free(serialized);
+	} else { // ItsPublicKeyRequestStep
+		// Serialize message
+		StructuredMessage structured =
+		{PublicKeyAnswerCode, strdup(OKString), strlen(OKString)+1};
+		char *serialized = StructuredMessagePack(structured);
+		StructuredMessageDestroy(structured);
+		
+		// Send it
+		purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
+		
+		// Clean
+		g_free(serialized);
+	}
+	
+	*modified_input_msg = NULL;
+	aHandler->validatedStep = ItsPublicKeyAnswerStep;
+}
+
+static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
+								   StructuredMessage structured,
+								   PurpleConversation *conv,
+								   const char *who,
+								   char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+	
+	
+}
+
+static void PublicKeyAlreadyKnownHandler(ProtocolHandlerRef aHandler,
+										 StructuredMessage structured,
+										 PurpleConversation *conv,
+										 const char *who,
+										 char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+}
+
+static void SecretKeySendingHandler(ProtocolHandlerRef aHandler,
+									StructuredMessage structured,
+									PurpleConversation *conv,
+									const char *who,
+									char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+}
+
+static void SecretKeyAnswerHandler(ProtocolHandlerRef aHandler,
+								   StructuredMessage structured,
+								   PurpleConversation *conv,
+								   const char *who,
+								   char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+}
+
+static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
+										StructuredMessage structured,
+										PurpleConversation *conv,
+										const char *who,
+										char **modified_input_msg)
+{
+	assert(aHandler != NULL);
+	assert(conv != NULL);
+	assert(who != NULL);
+	assert(strlen(who) > 0);
+	assert(modified_input_msg != NULL);
+}
+
 

@@ -87,8 +87,8 @@ void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
 	assert(outputLength != NULL);
 
 	p_AsymCipher->original = ecies_decrypt(p_AsymCipher->hex_priv, p_AsymCipher->ciphered, outputLength);
-	assert(original != NULL);
-	assert(strlen(original) > 0);
+	assert(p_AsymCipher->original != NULL);
+	//assert(strlen(original) > 0);
 
 	return p_AsymCipher->original;
 }
@@ -128,12 +128,12 @@ void AsymCipherDestroy(AsymCipherRef p_AsymCipher){
 }
 
 /* GETTERS & SETTERS */
-char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher){
+const char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher){
 	assert(p_AsymCipher != NULL);
 	assert(p_AsymCipher->hex_pub != NULL);	
 	return p_AsymCipher->hex_pub;
 }
-char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher){
+const char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher){
 	assert(p_AsymCipher != NULL);
 	assert(p_AsymCipher->hex_priv != NULL);		
 	return p_AsymCipher->hex_priv;

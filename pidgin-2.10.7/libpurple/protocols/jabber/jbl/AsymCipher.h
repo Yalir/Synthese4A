@@ -67,7 +67,7 @@ void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
 void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
                          unsigned int inputLength, unsigned int *outputLength);
 
-char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher);
-char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher);
+const char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher);
+const char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher);
 
 #endif
