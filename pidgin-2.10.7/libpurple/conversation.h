@@ -148,7 +148,7 @@ typedef enum
 #include "buddyicon.h"
 #include "log.h"
 #include "server.h"
-#include "protocols/jabber/SymCipher.h"
+#include "protocols/jabber/jbl/ProtocolHandler.h"
 
 /**
  * Conversation operations and events.
@@ -347,11 +347,6 @@ struct _PurpleConversation
 
 	GList *logs;                /**< This conversation's logs           */
 	
-	struct struct_cipherInfo {
-		gboolean encryption_enabled;
-		gboolean decryption_enabled;
-		SymCipherRef cipher;
-	} cipherInfo; 
 
 	union
 	{
@@ -368,6 +363,8 @@ struct _PurpleConversation
 
 	PurpleConnectionFlags features; /**< The supported features */
 	GList *message_history;         /**< Message history, as a GList of PurpleConvMessage's */
+	
+	ProtocolHandlerRef jblHandler;
 };
 
 #ifdef __cplusplus

@@ -2,21 +2,25 @@
 #ifndef PROTOCOL_HANDLER_H
 #define PROTOCOL_HANDLER_H
 
-#include "connection.h"
+#include <glib.h>
 
 typedef struct ProtocolHandler_t *ProtocolHandlerRef;
 
 /**
+ * Key lengths ?
+ * Signature length ?
+ * Challenges + signature ?
+ *
  * JBL Protocol
  *
  * Structure for raw messages:
  *
- *  1    n
- * !-!-------!
- * !a!   b   !
- * !-!-------!
+ *  1  4     ld      
+ * !-!----!------!------
+ * !c! ld !  d   !
+ * !-!----!------!
  *
- * Where 'a' is the message code/type on 1 byte followed by b for the remaining
+ * Where 'c' is the message code/type on 1 byte followed by 'd' for the remaining
  * n bytes that can contain any required data according to the message type.
  * Valid codes are:
  * - 1: stop encryption, disable JBL protocol and switch back to classic
@@ -35,7 +39,7 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * === Protocol ===
  *
  * 1. A types ":encrypt=1"
- * 2. A sends to B: ":lets-enable-encryption
+ * 2. A sends to B: ":lets-enable-encryption"
  * 3. B sends to A: ":ok-lets-encrypt" or ":no-i-dont-want-to"
  *
  * Now communication switches to raw data mode with Base64 encoding/decoding
@@ -51,12 +55,14 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * 9. A chooses whether to accept B's public key then sends a public key answer
  * to B.
  * 10. A creates a secret key
- * 11. A sends the secret key to B, encrypted with B's public key
- * 12. B sends a secret key answer to A.
+ * 11. A sends the secret key to B, encrypted with B's public key, signed with
+ * A's private key
+ * 12. B sends a secret key answer to A, signed with B's private key
  *
  * On failure, the communication switches back to the classical text mode.
  * On success, the messages are sent in the same raw mode with prefix code 7
- * followed by the encrypted message using the secret key.
+ * followed by the encrypted message using the secret key and the signature of
+ * the sender.
  *
  */
 
