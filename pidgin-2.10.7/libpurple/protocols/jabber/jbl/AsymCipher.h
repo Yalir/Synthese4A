@@ -4,25 +4,19 @@
 
 typedef struct AsymCipher_t *AsymCipherRef;
 
-
-//#warning AsymCipherRef AsymCipherCreate(void);
-#warning AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key);
-#warning AsymCipherRef AsymCipherCreateWithKeyPair(char *priv_key, char *pub_key);
-#warning AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(void);
-//#warning AsymCipherRef AsymCipherGenerateKeyPair(AsymCipherRef asymCipher);
+/** @brief Create a new asymetric cipher handle
+ *
+ * @return a ready to used cipher object, or NULL is an error occured
+ */
+AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key);
 
 /** @brief Create a new asymetric cipher handle
  *
  * @return a ready to used cipher object, or NULL is an error occured
  */
-AsymCipherRef AsymCipher_CreateWithPublicKey(void);
+AsymCipherRef AsymCipherCreateWithKeyPair(char *priv_key, char *pub_key);
 
-/** @brief Create a new asymetric cipher handle
- *
- * @return a ready to used cipher object, or NULL is an error occured
- */
-AsymCipherRef AsymCipher_CreateWithKeyPair(void);
-
+AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(void);
 
 /** @brief Destroy a asymetric cipher handle
  *
@@ -31,8 +25,7 @@ AsymCipherRef AsymCipher_CreateWithKeyPair(void);
  *
  * @param aAsymCipher the cipher handle to destroy
  */
-#warning => AsymCipherDestroy
-void AsymCipher_Destroy(AsymCipherRef p_AsymCipher);
+void AsymCipherDestroy(AsymCipherRef p_AsymCipher);
 
 
 /** @brief Encrypt the given data @a data of length @a inputLength
@@ -49,8 +42,7 @@ void AsymCipher_Destroy(AsymCipherRef p_AsymCipher);
  * @param outputLength the length of the returned encrypted data
  * @return the encrypted data, or NULL if an error occured. You're responsible for g_freeing this data
  */
-#warning AsymCipherEncrypt
-void * AsymCipher_Encrypt(AsymCipherRef p_AsymCipher, const void *data,
+void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
                          unsigned int inputLength, unsigned int *outputLength);
 
 
@@ -71,10 +63,7 @@ void * AsymCipher_Encrypt(AsymCipherRef p_AsymCipher, const void *data,
 void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
                          unsigned int inputLength, unsigned int *outputLength);
 
-#warning => AsymCipherGetPublicKey
-char * AsymCipher_getHexPubKey(AsymCipherRef p_AsymCipher);
-#warning => AsymCipherGetPrivateKey
-char * AsymCipher_getHexPrivKey(AsymCipherRef p_AsymCipher);
-
+char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher);
+char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher);
 
 #endif
