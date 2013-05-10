@@ -37,7 +37,7 @@ AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key){
 	
 	p_AsymCipher->key = ecies_key_create_private_hex(pub_key);
 	assert(p_AsymCipher->key != NULL);
-	assert(strlen(p_AsymCipher->key) > 0);
+	//assert(strlen(p_AsymCipher->key) > 0);
 
 	return p_AsymCipher;
 }
@@ -49,7 +49,7 @@ AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(){
 
 	p_AsymCipher->key = ecies_key_create();
 	assert(p_AsymCipher->key != NULL);
-	assert(strlen(p_AsymCipher->key) > 0);
+	//assert(strlen(p_AsymCipher->key) > 0);
 
 	p_AsymCipher->hex_pub = ecies_key_public_get_hex(p_AsymCipher->key);
 	p_AsymCipher->hex_priv = ecies_key_private_get_hex(p_AsymCipher->key);	
@@ -72,7 +72,7 @@ void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
 
 	p_AsymCipher->ciphered = ecies_encrypt(p_AsymCipher->hex_pub, (void *) data, *outputLength);
 	assert(p_AsymCipher->ciphered != NULL);
-	asset(strlen(p_AsymCipher->ciphered) > 0);
+	assert(strlen(p_AsymCipher->ciphered) > 0);
 
 	return p_AsymCipher->ciphered;
 }
