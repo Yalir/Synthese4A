@@ -28,27 +28,35 @@ struct AsymCipher_t {
 };
 
 AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key){
-	AsymCipherRef p_AsymCipher = g_malloc0(sizeof(*p_AsymCipher));
+	
+	assert(pub_key != NULL);
+	assert(strlen(pub_key) > 0);
+	
+	AsymCipherRef p_AsymCipher = g_malloc0(sizeof(*p_AsymCipher));	
+	assert(p_AsymCipher != NULL);
+	
 	p_AsymCipher->key = ecies_key_create_private_hex(pub_key);
+	assert(p_AsymCipher->key != NULL);
+	assert(strlen(p_AsymCipher->key) > 0);
+
 	return p_AsymCipher;
 }
 
 AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(){
 
 	AsymCipherRef p_AsymCipher = g_malloc0(sizeof(*p_AsymCipher));
-	
-	if (!(p_AsymCipher->key = ecies_key_create())) {
-		printf("Key creation failed.\n");
-		// processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
-		return NULL;
-	}
+	assert(p_AsymCipher != NULL);	
 
-	if (!(p_AsymCipher->hex_pub = ecies_key_public_get_hex(p_AsymCipher->key)) || 
-       !(p_AsymCipher->hex_priv = ecies_key_private_get_hex(p_AsymCipher->key))) {
-		printf("Serialization of the key to a pair of hex strings failed.\n");
-		// processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
-		return NULL;
-	}
+	p_AsymCipher->key = ecies_key_create();
+	assert(p_AsymCipher->key != NULL);
+	assert(strlen(p_AsymCipher->key) > 0);
+
+	p_AsymCipher->hex_pub = ecies_key_public_get_hex(p_AsymCipher->key);
+	p_AsymCipher->hex_priv = ecies_key_private_get_hex(p_AsymCipher->key);	
+	assert(p_AsymCipher->hex_pub != NULL);
+	assert(strlen(p_AsymCipher->hex_pub) > 0);
+	assert(p_AsymCipher->hex_priv != NULL);
+	assert(strlen(p_AsymCipher->hex_priv) > 0);
 	
 	return p_AsymCipher;
 }
@@ -56,22 +64,31 @@ AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(){
 void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
                          unsigned int inputLength, unsigned int *outputLength){
 
-	if (!(p_AsymCipher->ciphered = ecies_encrypt(p_AsymCipher->hex_pub, (void *) data, *outputLength))) {
-		printf("The encryption process failed!\n");
-		// processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
-		return NULL;
-	}
+	assert(p_AsymCipher != NULL);
+	assert(data != NULL);
+	assert(strlen(data) > 0);
+	assert(inputLength > 0);
+	assert(outputLength != NULL);
+
+	p_AsymCipher->ciphered = ecies_encrypt(p_AsymCipher->hex_pub, (void *) data, *outputLength);
+	assert(p_AsymCipher->ciphered != NULL);
+	asset(strlen(p_AsymCipher->ciphered) > 0);
+
 	return p_AsymCipher->ciphered;
 }
 
 void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
                          unsigned int inputLength, unsigned int *outputLength){
 
-	if (!(p_AsymCipher->original = ecies_decrypt(p_AsymCipher->hex_priv, p_AsymCipher->ciphered, outputLength))) {
-		printf("The decryption process failed!\n");
-		// processor_cleanup(key, ciphered, hex_pub, hex_priv, text, copy, original);
-		return NULL;
-	}
+	assert(p_AsymCipher != NULL);
+	assert(data != NULL);
+	assert(strlen(data) > 0);
+	assert(inputLength > 0);
+	assert(outputLength != NULL);
+
+	p_AsymCipher->original = ecies_decrypt(p_AsymCipher->hex_priv, p_AsymCipher->ciphered, outputLength);
+	assert(original != NULL);
+	assert(strlen(original) > 0);
 
 	return p_AsymCipher->original;
 }
@@ -111,6 +128,14 @@ void AsymCipherDestroy(AsymCipherRef p_AsymCipher){
 }
 
 /* GETTERS & SETTERS */
-char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher){ return p_AsymCipher->hex_pub; }
-char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher){ return p_AsymCipher->hex_priv; }
+char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher){
+	assert(p_AsymCipher != NULL);
+	assert(p_AsymCipher->hex_pub != NULL);	
+	return p_AsymCipher->hex_pub;
+}
+char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher){
+	assert(p_AsymCipher != NULL);
+	assert(p_AsymCipher->hex_priv != NULL);		
+	return p_AsymCipher->hex_priv;
+}
 

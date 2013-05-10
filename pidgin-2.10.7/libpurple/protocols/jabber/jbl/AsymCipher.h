@@ -4,18 +4,22 @@
 
 typedef struct AsymCipher_t *AsymCipherRef;
 
-/** @brief Create a new asymetric cipher handle
+/** @brief Create a new asymetric cipher handle from a given public key
  *
- * @return a ready to used cipher object, or NULL is an error occured
+ * @return a ready to used cipher object
  */
 AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key);
 
-/** @brief Create a new asymetric cipher handle
+/** @brief Create a new asymetric cipher handle from a given key pair
  *
- * @return a ready to used cipher object, or NULL is an error occured
+ * @return a ready to used cipher object
  */
 AsymCipherRef AsymCipherCreateWithKeyPair(char *priv_key, char *pub_key);
 
+/** @brief Create a new asymetric cipher handle
+ *
+ * @return a ready to used cipher object
+ */
 AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(void);
 
 /** @brief Destroy a asymetric cipher handle
