@@ -19,7 +19,7 @@ static MessageHandler messageHandlers[EndEnumCode] =
 	PublicKeyMessageHandler,       // 3
 	PublicKeyAnswerHandler,        // 4
 	PublicKeyAlreadyKnownHandler,  // 5
-	SecretKeySendingHandler,       // 6
+	SecretKeyTransmissionHandler,       // 6
 	SecretKeyAnswerHandler,        // 7
 	EncryptedUserMessageHandler,   // 8
 };
@@ -59,8 +59,9 @@ static StructuredMessage StructuredMessageExtract(const char *b64Data, gboolean 
 		memcpy(&message.code, decoded, 1);
 		
 		if (decodedLength > 1) {
-			message.data = g_malloc(decodedLength-1);
-			memcpy(message.data, decoded + 1, decodedLength-1);
+			char *dataBuffer = g_malloc(decodedLength-1);
+			message.data = dataBuffer;
+			memcpy(dataBuffer, decoded + 1, decodedLength-1);
 			message.dataLength = decodedLength-1;
 		}
 	}
@@ -70,9 +71,17 @@ static StructuredMessage StructuredMessageExtract(const char *b64Data, gboolean 
 	return message;
 }
 
-static void StructuredMessageDestroy(StructuredMessage message)
+static void StructuredMessageSend(StructuredMessage structured,
+								  PurpleConversation *conv)
 {
-	if (message.data) g_free(message.data);
+	// Serialize message
+	char *serialized = StructuredMessagePack(structured);
+	
+	// Send it
+	purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
+	
+	// Clean
+	g_free(serialized);
 }
 
 
@@ -193,14 +202,20 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 																&success);
 		if (success) {
 			if (structured.code > 0 && structured.code < EndEnumCode) {
-				messageHandlers[structured.code](aHandler, structured,
-												 conv, who, modified_input_msg);
+				if (!structured.data || (structured.data && structured.data[structured.dataLength-1] == '\0')) {
+					messageHandlers[structured.code](aHandler, structured,
+													 conv, who, modified_input_msg);
+				} else {
+					// Data is not a string, thus it's not a JBL message
+					*modified_input_msg = g_strdup(original_msg);
+					return FALSE;
+				}
 			} else {
-				*modified_input_msg = strdup(original_msg);
+				*modified_input_msg = g_strdup(original_msg);
 				return FALSE;
 			}
 		} else {
-			*modified_input_msg = strdup(original_msg);
+			*modified_input_msg = g_strdup(original_msg);
 			return FALSE;
 		}
 	}
@@ -228,8 +243,6 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 		ProtocolHandlerEnable(aHandler, gc, who, original_msg, modified_output_msg);
 		modified = TRUE;
 		*modified_output_msg = NULL;
-		
-		
 	} else if (strcmp(original_msg, ":encrypt=0") == 0) {
 		ProtocolHandlerDisable(aHandler);
 		modified = TRUE;
@@ -310,6 +323,8 @@ static void BadMessageHandler(ProtocolHandlerRef aHandler,
 							  char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
@@ -326,6 +341,8 @@ static void StopEncryptionHandler(ProtocolHandlerRef aHandler,
 								  char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
@@ -343,6 +360,9 @@ static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
 									char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!yourStructured.data ||
+		   (yourStructured.data &&
+			yourStructured.data[yourStructured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
@@ -353,15 +373,10 @@ static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
 	unsigned hexPubLength = strlen(hexPub) + 1;
 	
 	// Serialize message
-	StructuredMessage structured = {PublicKeyAnswerCode, strdup(hexPub), hexPubLength};
-	char *serialized = StructuredMessagePack(structured);
-	StructuredMessageDestroy(structured);
-	
-	// Send it
-	purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
+	StructuredMessage structured = {PublicKeyAnswerCode, hexPub, hexPubLength};
+	StructuredMessageSend(structured, conv);
 	
 	// Clean
-	g_free(serialized);
 	*modified_input_msg = NULL;
 	aHandler->validatedStep = MyPublicKeyMessageStep;
 }
@@ -373,6 +388,8 @@ static void PublicKeyMessageHandler(ProtocolHandlerRef aHandler,
 									char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
@@ -382,27 +399,13 @@ static void PublicKeyMessageHandler(ProtocolHandlerRef aHandler,
 	if (aHandler->validatedStep != ItsPublicKeyRequestStep) {
 		// Serialize message
 		StructuredMessage structured =
-		{PublicKeyAnswerCode, strdup(NOKString), strlen(NOKString)+1};
-		char *serialized = StructuredMessagePack(structured);
-		StructuredMessageDestroy(structured);
-		
-		// Send it
-		purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
-		
-		// Clean
-		g_free(serialized);
+		{PublicKeyAnswerCode, NOKString, strlen(NOKString)+1};
+		StructuredMessageSend(structured, conv);
 	} else { // ItsPublicKeyRequestStep
 		// Serialize message
 		StructuredMessage structured =
-		{PublicKeyAnswerCode, strdup(OKString), strlen(OKString)+1};
-		char *serialized = StructuredMessagePack(structured);
-		StructuredMessageDestroy(structured);
-		
-		// Send it
-		purple_conv_im_send(PURPLE_CONV_IM(conv), serialized);
-		
-		// Clean
-		g_free(serialized);
+		{PublicKeyAnswerCode, OKString, strlen(OKString)+1};
+		StructuredMessageSend(structured, conv);
 	}
 	
 	*modified_input_msg = NULL;
@@ -416,13 +419,61 @@ static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
 								   char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
 	
-	
+	if (aHandler->validatedStep == MyPublicKeyMessageStep) {
+		if (strcmp(structured.data, OKString) == 0) {
+			assert(aHandler->peerAsymCipher != NULL);
+			assert(aHandler->localAsymCipher != NULL);
+			
+			// Now create secret key
+			aHandler->symCipher = SymCipherCreate();
+			assert(aHandler->symCipher != NULL);
+			
+			unsigned encryptedSecretLength;
+			char *secretKey = SymCipherGetSecretKey(aHandler->symCipher);
+			void *encryptedSecret = AsymCipherEncrypt(aHandler->peerAsymCipher,
+													  secretKey,
+													  strlen(secretKey)+1,
+													  &encryptedSecretLength);
+			
+			char *encryptedSecretHex = purple_base16_encode(encryptedSecret,
+															encryptedSecretLength);
+			
+			// Serialize and send the secret key
+			StructuredMessage structured =
+			{SecretKeyTransmissionCode, encryptedSecretHex, strlen(encryptedSecretHex)+1};
+			StructuredMessageSend(structured, conv);
+			
+			g_free(encryptedSecret);
+			g_free(encryptedSecretHex);
+			
+			*modified_input_msg = NULL;
+			aHandler->validatedStep = SecretKeyTransmissionStep;
+		} else if (strcmp(structured.data, NOKString) == 0) {
+			// Peer refused my public key, abort protocol
+			ProtocolHandlerDisable(aHandler);
+			*modified_input_msg = NULL;
+			aHandler->validatedStep = NotYetStartedStep;
+		} else {
+			fprintf(stderr, "PublicKeyAnswerHandler: malformed data: %s found"
+					" but %s or %s expected\n",
+					structured.data, OKString, NOKString);
+			*modified_input_msg = NULL;
+		}
+		
+	} else {
+		fprintf(stderr, "PublicKeyAnswerHandler error: got public key answer but"
+				" I did not send any public key request\n");
+		*modified_input_msg = NULL;
+	}
 }
+
 
 static void PublicKeyAlreadyKnownHandler(ProtocolHandlerRef aHandler,
 										 StructuredMessage structured,
@@ -431,23 +482,70 @@ static void PublicKeyAlreadyKnownHandler(ProtocolHandlerRef aHandler,
 										 char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	
+	assert(NULL == "Not implemented yet");
 }
 
-static void SecretKeySendingHandler(ProtocolHandlerRef aHandler,
+static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 									StructuredMessage structured,
 									PurpleConversation *conv,
 									const char *who,
 									char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	
+	if (aHandler->validatedStep == MyPublicKeyMessageStep) {
+		assert(aHandler->localAsymCipher != NULL);
+		
+		const char *encryptedSecretKeyHex = structured.data;
+		
+		// Hex to encrypted bin
+		unsigned long encryptedSecretKeyLength = 0;
+		unsigned char *encryptedSecretKey =
+		purple_base16_decode(encryptedSecretKeyHex,
+							 &encryptedSecretKeyLength);
+		assert(encryptedSecretKey != NULL && encryptedSecretKeyLength > 0);
+		
+		// Encrypted bin to bin
+		unsigned int secretKeyLength = 0;
+		char *secretKey = AsymCipherDecrypt(aHandler->localAsymCipher,
+											encryptedSecretKey,
+											encryptedSecretKeyLength,
+											&secretKeyLength);
+		
+		assert(secretKey != NULL && secretKeyLength > 0);
+		
+		// Create symetric cipher
+		aHandler->symCipher = SymCipherCreateWithSecretKey(secretKey,
+														   secretKeyLength);
+		assert(aHandler->symCipher != NULL);
+		g_free(secretKey);
+		
+		// Notify the peer that the secret key reception and decryption went well
+		StructuredMessage structured =
+		{SecretKeyAnswerCode, OKString, strlen(OKString)+1};
+		StructuredMessageSend(structured, conv);
+		
+		aHandler->validatedStep = EncryptionIsEnabledStep;
+		aHandler->encryption_enabled = TRUE;
+		*modified_input_msg = NULL;
+	} else {
+		fprintf(stderr, "SecretKeyTransmissionHandler: protocol error: the peer does"
+				" not know my public key yet but it sent me a secret key\n");
+		*modified_input_msg = NULL;
+	}
 }
 
 static void SecretKeyAnswerHandler(ProtocolHandlerRef aHandler,
@@ -457,10 +555,35 @@ static void SecretKeyAnswerHandler(ProtocolHandlerRef aHandler,
 								   char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	
+	if (aHandler->validatedStep == SecretKeyTransmissionStep) {
+		if (strcmp(structured.data, OKString) == 0) {
+			// Finalize encryption enabling
+			aHandler->validatedStep = EncryptionIsEnabledStep;
+			aHandler->encryption_enabled = TRUE;
+			*modified_input_msg = NULL;
+		} else if (strcmp(structured.data, NOKString) == 0) {
+			// Error with secret key, abort protocol
+			ProtocolHandlerDisable(aHandler);
+			*modified_input_msg = NULL;
+			aHandler->validatedStep = NotYetStartedStep;
+		} else {
+			fprintf(stderr, "SecretKeyAnswerHandler: malformed data: %s found"
+					" but %s or %s expected\n",
+					structured.data, OKString, NOKString);
+			*modified_input_msg = NULL;
+		}
+	} else {
+		fprintf(stderr, "SecretKeyAnswerHandler: protocol error: the peer does"
+				" not know the secret key yet but it sent me a secret key answer\n");
+		*modified_input_msg = NULL;
+	}
 }
 
 static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
@@ -470,10 +593,36 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 										char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	assert(!structured.data ||
+		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
 	assert(conv != NULL);
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	
+	if (aHandler->validatedStep == EncryptionIsEnabledStep) {
+		assert(aHandler->symCipher != NULL);
+		
+		const char *b64Encrypted = structured.data;
+		
+		unsigned long encryptedLength = 0;
+		unsigned char *encrypted = purple_base64_decode(b64Encrypted, &encryptedLength);
+		assert(encrypted && encryptedLength > 0);
+		
+		unsigned int messageLength;
+		char *message = SymCipherDecrypt(aHandler->symCipher,
+										 encrypted,
+										 encryptedLength,
+										 &messageLength);
+		
+		assert(message && messageLength > 0);
+		*modified_input_msg = message;
+		g_free(encrypted);
+	} else {
+		fprintf(stderr, "EncryptedUserMessageHandler: protocol error: received"
+				" encrypted user message but encryption is not ready\n");
+		*modified_input_msg = NULL;
+	}
 }
 
 

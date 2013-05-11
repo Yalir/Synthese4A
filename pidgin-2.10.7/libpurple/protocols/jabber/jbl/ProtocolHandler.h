@@ -15,10 +15,10 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  *
  * Structure for raw messages:
  *
- *  1  4     ld      
- * !-!----!------!------
- * !c! ld !  d   !
- * !-!----!------!
+ *  1   n
+ * !-!-----!
+ * !c!  d  !
+ * !-!-----!
  *
  * Where 'c' is the message code/type on 1 byte followed by 'd' for the remaining
  * n bytes that can contain any required data according to the message type.
@@ -31,10 +31,10 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * acceptation.
  * - 5: public key already known.
  * - 6: secret key transmission. Data contains the secret key encrypted with
- * the peer public key.
+ * the peer public key as hexadecimal string.
  * - 7: secret key answer. Data contains either OK or NOK to acknowledge for
  * secret key reception and decryption.
- * - 8: encrypted message. Data contains the encrypted message.
+ * - 8: encrypted message. Data contains the encrypted message as base 64 string.
  *
  *
  * === Protocol ===
@@ -57,9 +57,8 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * 10. A sends its public key to B.
  * 11. B chooses whether to accept A's public key then sends a public key answer
  * to A.
- * 12. A creates a secret key
- * 13. A sends the secret key to B, encrypted with B's public key, signed with
- * A's private key
+ * 12. A creates a secret key and sends it to B, encrypted with B's public key,
+ * signed with A's private key.
  * 14. B sends a secret key answer to A, signed with B's private key
  *
  * On failure, the communication switches back to the classical text mode.
@@ -112,7 +111,8 @@ void                ProtocolHandlerDestroy(ProtocolHandlerRef aHandler);
  * @param modified_input_msg a reference to a non-initilized 'char*'.
  * After calling this function *modified_input_msg will either be original_msg
  * or a valid reference to a new string or null
- * @return TRUE if the original_msg hasn't been left intact (ie. modified or destroyed), FALSE otherwise
+ * @return TRUE if the original_msg hasn't been left intact (ie. modified or
+ * destroyed), FALSE otherwise
  */
 gboolean            ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
                                                PurpleConnection *gc,
@@ -147,7 +147,8 @@ gboolean            ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
  * @param modified_output_msg a reference to a non-initilized 'char*'.
  * After calling this function *modified_output_msg will either be original_msg
  * or a valid reference to a new string or null
- * @return TRUE if the original_msg hasn't been left intact (ie. modified or destroyed), FALSE otherwise
+ * @return TRUE if the original_msg hasn't been left intact (ie. modified or
+ * destroyed), FALSE otherwise
  */
 gboolean            ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
                                                 PurpleConnection *gc,

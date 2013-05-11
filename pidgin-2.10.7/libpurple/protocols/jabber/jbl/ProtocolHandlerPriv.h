@@ -5,7 +5,7 @@
 #pragma mark StructuredMessage
 typedef struct {
 	unsigned char code;
-	void *data;
+	const char *data;
 	unsigned int dataLength;
 } StructuredMessage;
 
@@ -15,7 +15,7 @@ typedef enum {
 	PublicKeyMessageCode = 3,      // Public key
 	PublicKeyAnswerCode = 4,       // OK or NOK
 	PublicKeyAlreadyKnownCode = 5, // No associated data
-	SecretKeySendingCode = 6,      // Secret key
+	SecretKeyTransmissionCode = 6,      // Secret key
 	SecretKeyAnswerCode = 7,       // OK or NOK
 	EncryptedUserMessageCode = 8,  // User message
 	EndEnumCode
@@ -41,10 +41,10 @@ typedef enum {
 	//	MyPublicKeyRequestStep = 9,
 	MyPublicKeyMessageStep = 10,
 	//	MyPublicKeyAnswerStep = 11,
-	CreateSecretStep = 12,
-	SecretKeySendingStep = 13,
-	SecretKeyAnswerStep = 14,
-	EncryptionIsEnabledStep = 14
+	//	CreateSecretStep = 12,
+	SecretKeyTransmissionStep = 13,
+	//	SecretKeyAnswerStep = 14,
+	EncryptionIsEnabledStep = 15
 } ProtocolStep;
 
 #pragma mark Protocol strings
@@ -94,7 +94,7 @@ static void PublicKeyAlreadyKnownHandler(ProtocolHandlerRef aHandler,
 										 PurpleConversation *conv,
 										 const char *who,
 										 char **modified_input_msg);
-static void SecretKeySendingHandler(ProtocolHandlerRef aHandler,
+static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 									StructuredMessage structured,
 									PurpleConversation *conv,
 									const char *who,

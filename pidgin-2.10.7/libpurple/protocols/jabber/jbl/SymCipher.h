@@ -10,6 +10,10 @@ typedef struct SymCipher_t *SymCipherRef;
  */
 SymCipherRef	SymCipherCreate(void);
 
+#warning TODO SymCipherCreateWithSecretKey
+SymCipherRef	SymCipherCreateWithSecretKey(const char *secretKey,
+											 unsigned int secretKeyLength);
+
 
 /** @brief Destroy a symetric cipher handle
  *
@@ -19,6 +23,11 @@ SymCipherRef	SymCipherCreate(void);
  * @param aSymCipher the cipher handle to destroy
  */
 void			SymCipherDestroy(SymCipherRef aSymCipher);
+
+#warning TODO SymCipherGetSecretKey
+/** @brief Return the secret key as an hexadecimal string
+ */
+char *			SymCipherGetSecretKey(SymCipherRef aSymCipher);
 
 
 /** @brief Encrypt the given data @a data of length @a inputLength
