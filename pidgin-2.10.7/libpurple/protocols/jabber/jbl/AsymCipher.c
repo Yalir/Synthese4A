@@ -66,11 +66,12 @@ void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
 
 	assert(p_AsymCipher != NULL);
 	assert(data != NULL);
-	assert(strlen(data) > 0);
 	assert(inputLength > 0);
 	assert(outputLength != NULL);
+	assert(p_AsymCipher->hex_pub != NULL);
 
-	p_AsymCipher->ciphered = ecies_encrypt(p_AsymCipher->hex_pub, (void *) data, *outputLength);
+	p_AsymCipher->ciphered = ecies_encrypt(p_AsymCipher->hex_pub, (void *) data,
+										   inputLength);
 	assert(p_AsymCipher->ciphered != NULL);
 	assert(strlen(p_AsymCipher->ciphered) > 0);
 
@@ -82,9 +83,9 @@ void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
 
 	assert(p_AsymCipher != NULL);
 	assert(data != NULL);
-	assert(strlen(data) > 0);
 	assert(inputLength > 0);
 	assert(outputLength != NULL);
+	assert(p_AsymCipher->hex_priv != NULL);
 
 	p_AsymCipher->original = ecies_decrypt(p_AsymCipher->hex_priv, p_AsymCipher->ciphered, outputLength);
 	assert(p_AsymCipher->original != NULL);

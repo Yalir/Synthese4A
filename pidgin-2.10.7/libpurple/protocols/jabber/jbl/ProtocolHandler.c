@@ -111,6 +111,7 @@ struct ProtocolHandler_t {
 
 ProtocolHandlerRef ProtocolHandlerCreate(void)
 {
+	puts(__FUNCTION__);
 	ProtocolHandlerRef handler = g_malloc0(sizeof(*handler));
 	
 	if (handler) {
@@ -149,6 +150,8 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 	assert(strlen(original_msg) > 0);
 	assert(modified_input_msg != NULL);
 	
+	//puts(__FUNCTION__);
+	
 	PurpleConversation *conv = purple_find_conversation_with_account
 	(PURPLE_CONV_TYPE_IM, who, gc->account);
 	
@@ -182,9 +185,6 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 			aHandler->validatedStep = NotYetStartedStep;
 			return TRUE;
 		} else {
-			*modified_input_msg = NULL;
-			aHandler->validatedStep = LetsEnableEncryptionAnswerStep;
-			
 			// Skip step 4 (assume we never know the public key)
 			// Do step 5
 			StructuredMessage msg = {PublicKeyRequestCode, NULL, 0};
@@ -237,6 +237,8 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 	assert(strlen(original_msg) > 0);
 	assert(modified_output_msg != NULL);
 	
+	//puts(__FUNCTION__);
+	
 	gboolean modified = FALSE;
 	
 	if (strcmp(original_msg, ":encrypt=1") == 0) {
@@ -259,7 +261,8 @@ static void ProtocolHandlerDisable(ProtocolHandlerRef aHandler)
 {
 	assert(aHandler != NULL);
 	
-	if (aHandler->encryption_enabled == FALSE)
+	if (aHandler->encryption_enabled == FALSE &&
+		aHandler->validatedStep == NotYetStartedStep)
 		return;
 	
 	if (aHandler->peerAsymCipher) {
@@ -283,6 +286,7 @@ static void ProtocolHandlerEnable(ProtocolHandlerRef aHandler,
 						   char **modified_input_msg)
 {
 	assert(aHandler != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->encryption_enabled == TRUE)
 		return;
@@ -329,6 +333,7 @@ static void BadMessageHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	fprintf(stderr, "BadMessageHandler\n");
 	assert(FALSE);
@@ -347,6 +352,7 @@ static void StopEncryptionHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	ProtocolHandlerDisable(aHandler);
 	*modified_input_msg = NULL;
@@ -367,13 +373,14 @@ static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	// Gather our pub key
 	const char *hexPub = AsymCipherGetPublicKey(aHandler->localAsymCipher);
 	unsigned hexPubLength = strlen(hexPub) + 1;
 	
 	// Serialize message
-	StructuredMessage structured = {PublicKeyAnswerCode, hexPub, hexPubLength};
+	StructuredMessage structured = {PublicKeyMessageCode, hexPub, hexPubLength};
 	StructuredMessageSend(structured, conv);
 	
 	// Clean
@@ -394,6 +401,7 @@ static void PublicKeyMessageHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	// If he sends a pub key and we didn't ask for one
 	if (aHandler->validatedStep != ItsPublicKeyRequestStep) {
@@ -402,6 +410,11 @@ static void PublicKeyMessageHandler(ProtocolHandlerRef aHandler,
 		{PublicKeyAnswerCode, NOKString, strlen(NOKString)+1};
 		StructuredMessageSend(structured, conv);
 	} else { // ItsPublicKeyRequestStep
+		// Get the key
+		assert(aHandler->peerAsymCipher == NULL);
+		aHandler->peerAsymCipher = AsymCipherCreateWithPublicKey(structured.data);
+		assert(aHandler->peerAsymCipher != NULL);
+		
 		// Serialize message
 		StructuredMessage structured =
 		{PublicKeyAnswerCode, OKString, strlen(OKString)+1};
@@ -425,36 +438,52 @@ static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == MyPublicKeyMessageStep) {
 		if (strcmp(structured.data, OKString) == 0) {
-			assert(aHandler->peerAsymCipher != NULL);
 			assert(aHandler->localAsymCipher != NULL);
 			
-			// Now create secret key
-			aHandler->symCipher = SymCipherCreate();
-			assert(aHandler->symCipher != NULL);
-			
-			unsigned encryptedSecretLength;
-			char *secretKey = SymCipherGetSecretKey(aHandler->symCipher);
-			void *encryptedSecret = AsymCipherEncrypt(aHandler->peerAsymCipher,
-													  secretKey,
-													  strlen(secretKey)+1,
-													  &encryptedSecretLength);
-			
-			char *encryptedSecretHex = purple_base16_encode(encryptedSecret,
-															encryptedSecretLength);
-			
-			// Serialize and send the secret key
-			StructuredMessage structured =
-			{SecretKeyTransmissionCode, encryptedSecretHex, strlen(encryptedSecretHex)+1};
-			StructuredMessageSend(structured, conv);
-			
-			g_free(encryptedSecret);
-			g_free(encryptedSecretHex);
-			
-			*modified_input_msg = NULL;
-			aHandler->validatedStep = SecretKeyTransmissionStep;
+			// The peer has our pub key but we don't have its
+			if (aHandler->peerAsymCipher == NULL) {
+				// Skip step 8 (assume we never know the public key)
+				// Do step 9
+				StructuredMessage msg = {PublicKeyRequestCode, NULL, 0};
+				StructuredMessageSend(msg, conv);
+				aHandler->validatedStep = ItsPublicKeyRequestStep;
+				*modified_input_msg = NULL;
+			} else {
+				assert(aHandler->peerAsymCipher != NULL);
+				
+				// Now create secret key
+				aHandler->symCipher = SymCipherCreate();
+				assert(aHandler->symCipher != NULL);
+				
+				unsigned encryptedSecretLength;
+				char *secretKeyHex = SymCipherGetSecretKey(aHandler->symCipher);
+				
+				unsigned long secretKeyLength = 0;
+				char *secretKey = (char *)purple_base16_decode(secretKeyHex,
+															   &secretKeyLength);
+				void *encryptedSecret = AsymCipherEncrypt(aHandler->peerAsymCipher,
+														  secretKey,
+														  strlen(secretKey)+1,
+														  &encryptedSecretLength);
+				
+				char *encryptedSecretHex = purple_base16_encode(encryptedSecret,
+																encryptedSecretLength);
+				
+				// Serialize and send the secret key
+				StructuredMessage structured =
+				{SecretKeyTransmissionCode, encryptedSecretHex, strlen(encryptedSecretHex)+1};
+				StructuredMessageSend(structured, conv);
+				
+				g_free(encryptedSecret);
+				g_free(encryptedSecretHex);
+				
+				*modified_input_msg = NULL;
+				aHandler->validatedStep = SecretKeyTransmissionStep;
+			}
 		} else if (strcmp(structured.data, NOKString) == 0) {
 			// Peer refused my public key, abort protocol
 			ProtocolHandlerDisable(aHandler);
@@ -488,6 +517,7 @@ static void PublicKeyAlreadyKnownHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	assert(NULL == "Not implemented yet");
 }
@@ -505,6 +535,7 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == MyPublicKeyMessageStep) {
 		assert(aHandler->localAsymCipher != NULL);
@@ -561,6 +592,7 @@ static void SecretKeyAnswerHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == SecretKeyTransmissionStep) {
 		if (strcmp(structured.data, OKString) == 0) {
@@ -599,6 +631,7 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
+	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == EncryptionIsEnabledStep) {
 		assert(aHandler->symCipher != NULL);

@@ -7,6 +7,7 @@
 #include <glib.h>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
+#include "../../../util.h"
 
 struct SymCipher_t {
 	EVP_CIPHER_CTX encryption_ctx;
@@ -94,6 +95,12 @@ SymCipherRef	SymCipherCreate(void)
 	return newCipher;
 }
 
+SymCipherRef	SymCipherCreateWithSecretKey(const char *secretKey,
+											 unsigned int secretKeyLength)
+{
+	return SymCipherCreate();
+}
+
 void			SymCipherDestroy(SymCipherRef aSymCipher)
 {
 	assert(aSymCipher != NULL);
@@ -101,6 +108,14 @@ void			SymCipherDestroy(SymCipherRef aSymCipher)
 	EVP_CIPHER_CTX_cleanup(&aSymCipher->encryption_ctx);
 	EVP_CIPHER_CTX_cleanup(&aSymCipher->decryption_ctx);
 	g_free(aSymCipher);
+}
+
+char *			SymCipherGetSecretKey(SymCipherRef aSymCipher)
+{
+	const char *key = "azertyuiopqsdfg";
+	char *hex = purple_base16_encode((const unsigned char *)key, strlen(key)+1);
+	
+	return hex;
 }
 
 void *			SymCipherEncrypt(SymCipherRef aSymCipher,

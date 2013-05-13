@@ -37,8 +37,7 @@
 #include "smiley.h"
 #include "iq.h"
 #include "conversation.h"
-#include "SymCipher.h"
-#include "AsymCipher.h"
+#include "jbl/ProtocolHandler.h"
 
 #include <string.h>
 #include <assert.h>
@@ -508,8 +507,6 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 	xmlnode *child;
 	gboolean signal_return;
 	PurpleConnection *pc = js->gc;
-	
-	//printf("Parse with js=%p\n", js);
 
 	from = xmlnode_get_attrib(packet, "from");
 	id   = xmlnode_get_attrib(packet, "id");
@@ -594,18 +591,37 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 		} else if(!strcmp(child->name, "body") && !strcmp(xmlns, NS_XMPP_CLIENT)) {
 			if(!jm->body) {
 				char *msg = xmlnode_get_data(child);
-				char *deciphered_msg = NULL;
-				char *messageToUse = msg;
 				
-				// Decrypt body
-				if (TRUE == jbl_perform_input_security(pc, from, msg, &deciphered_msg))
-					messageToUse = deciphered_msg;
+				
+				/* ==================== MODIFIED SECTION ===================== */
+				/* Modify message before reading if required by the JBL protocol
+				 */
+				char *modified_msg = NULL;
+				char *messageToUse = msg;
+				PurpleConversation *conv = purple_find_conversation_with_account
+				(PURPLE_CONV_TYPE_IM, from, pc->account);
+				
+				if (conv != NULL) {
+					if (conv->jblHandler == NULL)
+						conv->jblHandler = ProtocolHandlerCreate();
+					
+					gboolean modified = ProtocolHandlerHandleInput(conv->jblHandler,
+																   pc,
+																   from,
+																   msg,
+																   &modified_msg);
+					
+					if (modified) {
+						g_free(msg);
+						msg = modified_msg;
+					}
+				}
+				/* ================= END OF MODIFIED SECTION ================= */
 				
 				char *escaped = purple_markup_escape_text(messageToUse, -1);
 				jm->body = purple_strdup_withhtml(escaped);
 				g_free(escaped);
 				g_free(msg);
-				g_free(deciphered_msg);
 			}
 		} else if(!strcmp(child->name, "html") && !strcmp(xmlns, NS_XHTML_IM)) {
 			if(!jm->xhtml && xmlnode_get_child(child, "body")) {
@@ -1142,7 +1158,6 @@ jabber_xhtml_plain_equal(const char *xhtml_escaped,
 	return ret;
 }
 
-/** Fonction qui se chargera de l'encryption. */
 int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *msg,
 		PurpleMessageFlags flags)
 {
@@ -1152,23 +1167,6 @@ int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *ms
 	char *xhtml;
 	char *tmp;
 	char *resource;
-	char *ciphered_msg;
-	
-	if (strcmp(msg, ":encrypt=1") == 0) {
-		jbl_set_output_security_enabled(gc, who, TRUE);
-		// Echange du secret avec RSA:
-		
-		return 0;
-	} else if (strcmp(msg, ":encrypt=0") == 0) {
-		jbl_set_output_security_enabled(gc, who, FALSE);
-		return 0;
-	} else if (strcmp(msg, ":decrypt=1") == 0) {
-		jbl_set_input_security_enabled(gc, who, TRUE);
-		return 0;
-	} else if (strcmp(msg, ":decrypt=0") == 0) {
-		jbl_set_input_security_enabled(gc, who, FALSE);
-		return 0;
-	}
 	
 	if(!who || !msg)
 		return 0;
@@ -1215,10 +1213,28 @@ int jabber_message_send_im(PurpleConnection *gc, const char *who, const char *ms
 		xhtml = tmp;
 	}
 	
-	if (TRUE == jbl_perform_output_security(gc, who, jm->body, &ciphered_msg)) {
+	/* ========================== MODIFIED SECTION ========================== */
+	/* Modify message before sending if required by the JBL protocol
+	 */
+	PurpleConversation *conv = purple_find_conversation_with_account
+	(PURPLE_CONV_TYPE_IM, who, gc->account);
+	assert(conv != NULL);
+	
+	if (conv->jblHandler == NULL)
+		conv->jblHandler = ProtocolHandlerCreate();
+	
+	gchar *modified_msg = NULL;
+	gboolean modified = ProtocolHandlerHandleOutput(conv->jblHandler,
+													gc,
+													who,
+													jm->body,
+													&modified_msg);
+	
+	if (modified) {
 		g_free(jm->body);
-		jm->body = ciphered_msg;
+		jm->body = modified_msg;
 	}
+	/* ======================= END OF MODIFIED SECTION ====================== */
 	
 	/*
 	 * For backward compatibility with user expectations or for those not on
@@ -1348,204 +1364,3 @@ gboolean jabber_custom_smileys_isenabled(JabberStream *js, const gchar *namespac
 
 	return purple_account_get_bool(account, "custom_smileys", TRUE);
 }
-
-gboolean jbl_set_output_security_enabled(PurpleConnection *gc, const char *convWithWho, gboolean enable)
-{
-	assert(gc != NULL);
-	assert(convWithWho != NULL);
-	assert(strlen(convWithWho) > 0);
-	
-	gboolean assigned = FALSE;
-	PurpleConversation *conv = purple_find_conversation_with_account
-	(PURPLE_CONV_TYPE_IM, convWithWho, gc->account);
-	
-	if (conv) {
-		conv->cipherInfo.encryption_enabled = enable;
-		
-		
-		// Create or destroy the cipher if needed
-		if (conv->cipherInfo.cipher == NULL && enable == TRUE) {
-			conv->cipherInfo.cipher = SymCipherCreate();
-		} else if (conv->cipherInfo.cipher != NULL &&
-				   conv->cipherInfo.decryption_enabled == FALSE &&
-				   conv->cipherInfo.encryption_enabled == FALSE) {
-			SymCipherDestroy(conv->cipherInfo.cipher);
-			conv->cipherInfo.cipher = NULL;
-		}
-		
-		assigned = TRUE;
-	}
-	
-	return assigned;
-}
-
-gboolean jbl_set_input_security_enabled(PurpleConnection *gc, const char *convWithWho, gboolean enable)
-{
-	assert(gc != NULL);
-	assert(convWithWho != NULL);
-	assert(strlen(convWithWho) > 0);
-	
-	gboolean assigned = FALSE;
-	PurpleConversation *conv = purple_find_conversation_with_account
-	(PURPLE_CONV_TYPE_IM, convWithWho, gc->account);
-	
-	if (conv) {
-		conv->cipherInfo.decryption_enabled = enable;
-		
-		// Create or destroy the cipher if needed
-		if (conv->cipherInfo.cipher == NULL && enable == TRUE) {
-			conv->cipherInfo.cipher = SymCipherCreate();
-		} else if (conv->cipherInfo.cipher != NULL &&
-				   conv->cipherInfo.decryption_enabled == FALSE &&
-				   conv->cipherInfo.encryption_enabled == FALSE) {
-			SymCipherDestroy(conv->cipherInfo.cipher);
-			conv->cipherInfo.cipher = NULL;
-		}
-		
-		assigned = TRUE;
-	}
-	
-	return assigned;
-}
-
-gboolean jbl_perform_input_security(PurpleConnection *gc, const char *who,
-									const char *msg, char **deciphered_msg)
-{
-	gboolean securityPerformed = FALSE; /** 1 if security have been performed, 0 else */
-	PurpleAccount *account = NULL;
-	PurpleConversation *conv = NULL;
-	
-	assert(gc != NULL);
-	assert(who != NULL);
-	assert(strlen(who) > 0);
-	assert(msg != NULL);
-	assert(strlen(msg) > 0);
-	assert(deciphered_msg != NULL);
-	
-	account = purple_connection_get_account(gc);
-	conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who,
-													   account);
-	
-	if (conv == NULL) {
-		printf("INPUT PurpleConversation NOT found for user %s!\n", who);
-	} else {
-		printf("INPUT PurpleConversation %p found for user %s!\n", conv, who);
-		
-		// A user wants to cipher data
-		if (conv->cipherInfo.decryption_enabled == TRUE) {
-			SymCipherRef symCipher = NULL;
-			unsigned char *rawData = NULL;
-			unsigned long rawDataLength = 0;
-			char *decipheredData = NULL;
-			unsigned int decipheredDataLength = 0;
-			
-			if (conv->cipherInfo.cipher == NULL)
-				conv->cipherInfo.cipher = SymCipherCreate();
-			
-			symCipher = conv->cipherInfo.cipher;
-			assert(symCipher != NULL);
-			
-			// Gather the raw data from the base64 message
-			rawData = purple_base64_decode(msg, &rawDataLength);
-			
-			if (rawData && rawDataLength > 0) {
-				// Perform decryption
-				decipheredData = SymCipherDecrypt(symCipher, rawData, rawDataLength,
-												  &decipheredDataLength);
-				
-				// Encrypted data is no more needed
-				g_free(rawData);
-				rawData = NULL;
-				
-				if (decipheredData && decipheredDataLength > 0) {
-					// Our deciphered data should be a null-terminated string
-					if (decipheredData[decipheredDataLength-1] != '\0') {
-						fprintf(stderr, "Invalid non null-terminated deciphered data\n");
-						g_free(decipheredData);
-					} else {
-						*deciphered_msg = decipheredData;
-						securityPerformed = TRUE;
-					}
-				} else {
-					if (decipheredData)
-						g_free(decipheredData);
-					
-					fprintf(stderr, "Invalid deciphered sequence\n");
-				}
-			} else {
-				if (rawData)
-					g_free(rawData);
-				
-				fprintf(stderr, "Could not decode the base64 string\n");
-			}
-		}
-	}
-	return securityPerformed;
-}
-
-gboolean jbl_perform_output_security(PurpleConnection *gc, const char *who, const char *msg, char ** ciphered_msg)
-{
-	int securityPerformed = FALSE; /** 1 if security have been performed, 0 else */
-	unsigned int ciphered_data_length = 0;
-	unsigned char *ciphered_data = NULL;
-	PurpleConversation *conv = NULL;
-	SymCipherRef cipher = NULL;
-	
-	assert(gc != NULL);
-	assert(who != NULL);
-	assert(strlen(who) > 0);
-	assert(msg != NULL);
-	assert(strlen(msg) > 0);
-	assert(ciphered_msg != NULL);
-	
-	printf("purple_find_conversation_with_account(%d, %s, %p (%s))\n",
-		   PURPLE_CONV_TYPE_IM, who, gc->account, gc->account->username);
-	conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who,
-													   gc->account);
-	
-	if (conv == NULL) {
-		printf("OUTPUT PurpleConversation NOT found for user %s!\n", who);
-	} else {
-		printf("OUTPUT PurpleConversation %p found for user %s!\n", conv, who);
-		
-		// A user wants to cipher data
-		if(conv->cipherInfo.encryption_enabled == TRUE) {
-			
-			/* CYPHERING */
-			if (conv->cipherInfo.cipher == NULL)
-				conv->cipherInfo.cipher = SymCipherCreate();
-			
-			cipher = conv->cipherInfo.cipher;
-			assert(cipher != NULL);
-			
-			// Encrypt
-			ciphered_data = SymCipherEncrypt(cipher, msg, strlen(msg) + 1,
-											 &ciphered_data_length);
-			
-			if (ciphered_data && ciphered_data_length > 0) {
-				// Encode to base64
-				gchar *b64 = purple_base64_encode(ciphered_data, ciphered_data_length);
-				
-				// Now we have base64 encoded data, dispose of the ciphered data
-				g_free(ciphered_data);
-				ciphered_data = NULL;
-				
-				if (b64 && strlen(b64) > 0) {
-					*ciphered_msg = b64;
-					securityPerformed = TRUE;
-				} else if (b64) {
-					// If we have an allocated buffer with no character, free it
-					g_free(b64);
-					fprintf(stderr, "Base64 encoding failed\n");
-				}
-			} else {
-				if (ciphered_data)
-					g_free(ciphered_data);
-				
-				fprintf(stderr, "Encryption failed\n");
-			}
-		}
-	}
-	return securityPerformed;
-}
-
