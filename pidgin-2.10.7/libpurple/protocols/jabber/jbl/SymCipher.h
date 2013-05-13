@@ -4,15 +4,25 @@
 
 typedef struct SymCipher_t *SymCipherRef;
 
-/** @brief Create a new symetric cipher handle
+/** @brief Create a new symetric cipher handle and generate a secret key
  *
  * @return a ready to used cipher object, or NULL is an error occured
  */
-SymCipherRef	SymCipherCreate(void);
+SymCipherRef	SymCipherCreateWithGeneratedKey(void);
 
-#warning TODO SymCipherCreateWithSecretKey
-SymCipherRef	SymCipherCreateWithSecretKey(const char *secretKey,
-											 unsigned int secretKeyLength);
+/** @brief Create a new symetric cipher handle with the key @a keyData
+ *
+ * Preconditions:
+ * - secretKey must be a valid hexadecimal string
+ *
+ * @param keyHex the 128 bytes key to use for secret key generation for
+ * the symetric cipher, as an hexadecimal string
+ * @param saltHex the 8 bytes salt to use for secret key generation for
+ * the symetric cipher, as an hexadecimal string
+ * @return a valid symetric cipher handle
+ */
+SymCipherRef	SymCipherCreateWithKey(const char *keyHex,
+									   const char *saltHex);
 
 
 /** @brief Destroy a symetric cipher handle
@@ -24,10 +34,29 @@ SymCipherRef	SymCipherCreateWithSecretKey(const char *secretKey,
  */
 void			SymCipherDestroy(SymCipherRef aSymCipher);
 
-#warning TODO SymCipherGetSecretKey
-/** @brief Return the secret key as an hexadecimal string
+
+/** @brief Return the key used to generate the secret as an hexadecimal string
+ *
+ * Preconditions:
+ * - aSymCipher must be a valid cipher handle
+ *
+ * @param aSymCipher the cipher handle to get the key from
+ * @return the generation key as an hexadecimal string, you're responsible for
+ * g_freeing this string
  */
-char *			SymCipherGetSecretKey(SymCipherRef aSymCipher);
+char *			SymCipherGetKey(SymCipherRef aSymCipher);
+
+
+/** @brief Return the salt used to generate the secret as an hexadecimal string
+ *
+ * Preconditions:
+ * - aSymCipher must be a valid cipher handle
+ *
+ * @param aSymCipher the cipher handle to get the salt from
+ * @return the salt as an hexadecimal string, you're responsible for
+ * g_freeing this string
+ */
+char *			SymCipherGetSalt(SymCipherRef aSymCipher);
 
 
 /** @brief Encrypt the given data @a data of length @a inputLength
