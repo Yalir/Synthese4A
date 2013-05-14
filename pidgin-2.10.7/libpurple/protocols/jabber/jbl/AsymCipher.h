@@ -8,13 +8,13 @@ typedef struct AsymCipher_t *AsymCipherRef;
  *
  * @return a ready to used cipher object
  */
-AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key);
+AsymCipherRef AsymCipherCreateWithPublicKey(const char *pub_key);
 
 /** @brief Create a new asymetric cipher handle from a given key pair
  *
  * @return a ready to used cipher object
  */
-AsymCipherRef AsymCipherCreateWithKeyPair(char *priv_key, char *pub_key);
+AsymCipherRef AsymCipherCreateWithKeyPair(const char *priv_key, const char *pub_key);
 
 /** @brief Create a new asymetric cipher handle
  *
@@ -47,7 +47,7 @@ void AsymCipherDestroy(AsymCipherRef p_AsymCipher);
  * @return the encrypted data, or NULL if an error occured. You're responsible for g_freeing this data
  */
 void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
-                         unsigned int inputLength, unsigned int *outputLength);
+                         unsigned int inputLength, unsigned long *outputLength);
 
 
 /** @brief Decrypt the given data @a data of length @a inputLength
@@ -65,7 +65,7 @@ void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
  * @return the encrypted data, or NULL if an error occured. You're responsible for g_freeing this data
  */
 void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
-                         unsigned int inputLength, unsigned int *outputLength);
+                         unsigned int inputLength, unsigned long *outputLength);
 
 const char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher);
 const char * AsymCipherGetPrivateKey(AsymCipherRef p_AsymCipher);

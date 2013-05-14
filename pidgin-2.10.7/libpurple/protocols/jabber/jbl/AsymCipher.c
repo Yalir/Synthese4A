@@ -8,26 +8,13 @@
 #include "./cryptron/ecies.h"
 
 struct AsymCipher_t {
-	// EVP_CIPHER_CTX encryption_ctx;
-	// EVP_CIPHER_CTX decryption_ctx;
 	EC_KEY *key;
-	char *hex_pub;
-	char *hex_priv;
-	secure_t *ciphered;
-	unsigned char *original;
-/*
-	typedef struct {
-		typedef struct {
-			uint64_t key;
-			uint64_t mac;
-			uint64_t orig;
-			uint64_t body;
-		} length;
-	} secure_head_t;
-*/
+	const char *hex_pub;
+	const char *hex_priv;
+	secure_t *cipher;
 };
 
-AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key){
+AsymCipherRef AsymCipherCreateWithPublicKey(const char *pub_key){
 	
 	assert(pub_key != NULL);
 	assert(strlen(pub_key) > 0);
@@ -35,8 +22,8 @@ AsymCipherRef AsymCipherCreateWithPublicKey(char *pub_key){
 	AsymCipherRef p_AsymCipher = g_malloc0(sizeof(*p_AsymCipher));	
 	assert(p_AsymCipher != NULL);
 	
-	p_AsymCipher->key = ecies_key_create_private_hex(pub_key);
-	assert(p_AsymCipher->key != NULL);
+	p_AsymCipher->hex_pub = strdup(pub_key);
+	assert(p_AsymCipher->hex_pub != NULL);
 	//assert(strlen(p_AsymCipher->key) > 0);
 
 	return p_AsymCipher;
@@ -62,7 +49,7 @@ AsymCipherRef AsymCipherCreateWithGeneratedKeyPair(){
 }
 
 void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
-                         unsigned int inputLength, unsigned int *outputLength){
+                         unsigned int inputLength, unsigned long *outputLength){
 
 	assert(p_AsymCipher != NULL);
 	assert(data != NULL);
@@ -70,16 +57,17 @@ void * AsymCipherEncrypt(AsymCipherRef p_AsymCipher, const void *data,
 	assert(outputLength != NULL);
 	assert(p_AsymCipher->hex_pub != NULL);
 
-	p_AsymCipher->ciphered = ecies_encrypt(p_AsymCipher->hex_pub, (void *) data,
-										   inputLength);
+	p_AsymCipher->ciphered = ecies_encrypt((char *)p_AsymCipher->hex_pub, (unsigned char *)data, inputLength);
+	*outputLength = secure_body_length(p_AsymCipher->ciphered);	
+		
 	assert(p_AsymCipher->ciphered != NULL);
-	assert(strlen(p_AsymCipher->ciphered) > 0);
+	assert(outputLength > 0);
 
-	return p_AsymCipher->ciphered;
+	return secure_ p_AsymCipher->ciphered;
 }
 
 void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
-                         unsigned int inputLength, unsigned int *outputLength){
+                         unsigned int inputLength, unsigned long *outputLength){
 
 	assert(p_AsymCipher != NULL);
 	assert(data != NULL);
@@ -87,11 +75,10 @@ void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
 	assert(outputLength != NULL);
 	assert(p_AsymCipher->hex_priv != NULL);
 
-	p_AsymCipher->original = ecies_decrypt(p_AsymCipher->hex_priv, p_AsymCipher->ciphered, outputLength);
-	assert(p_AsymCipher->original != NULL);
-	//assert(strlen(original) > 0);
+	unsigned char *deciphered = ecies_decrypt((char *)p_AsymCipher->hex_priv, data, outputLength);
+	assert(deciphered != NULL);
 
-	return p_AsymCipher->original;
+	return deciphered;
 }
 
 void AsymCipherDestroy(AsymCipherRef p_AsymCipher){
@@ -128,7 +115,7 @@ void AsymCipherDestroy(AsymCipherRef p_AsymCipher){
 	return;
 }
 
-/* GETTERS & SETTERS */
+/* GETTERS */
 const char * AsymCipherGetPublicKey(AsymCipherRef p_AsymCipher){
 	assert(p_AsymCipher != NULL);
 	assert(p_AsymCipher->hex_pub != NULL);	
