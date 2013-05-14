@@ -22,7 +22,7 @@ void printSecure_t (secure_t *sec){
 	uint64_t len = secure_body_length(sec);
 	int i;
 	for(i=0 ; i<len ; i++){
-			printf("%.02x ", donnees[i]);
+			printf("%.02x ", (unsigned char)donnees[i]);
 	}
 	puts("");
 }
@@ -40,22 +40,30 @@ int main(){
 	printf("Ciphering...\n");
 	char *data = "Random data, high as fuck!";
 	unsigned long outputLength = 0;
-	secure_t *ciphered = AsymCipherEncrypt(p_AsymCipher, data, strlen(data), &outputLength);
+	secure_t *ciphered = AsymCipherEncrypt(p_AsymCipher, data, strlen(data)+1, &outputLength);
 	printf("Plaintext: ");
 	printKey(data);
 	printf("Ciphered text: ");
 	printSecure_t(ciphered);
 	printf("Ciphered length: %ld\n", outputLength);
-	char * original = AsymCipherDecrypt(p_AsymCipher, data, outputLength, &outputLength);
-	printf("Deciphered: ");
-	printKey(original);
+	char * original = AsymCipherDecrypt(p_AsymCipher, ciphered, outputLength, &outputLength);
+	printf("Deciphered: %s\n", original);
 
-	//AsymCipherRef p_AsymCipherRefWithPublicKey = AsymCipherCreateWithPublicKey(pub_key);
-	//printf("Private key created with public key: ");
-	//printKey(AsymCipherGetPublicKey(p_AsymCipherRefWithPublicKey));
-	//printf("Destroying asymCipher...\n");
-	//AsymCipherDestroy(p_AsymCipher);
-	//AsymCipherDestroy(p_AsymCipherRefWithPublicKey);
+	AsymCipherRef p_AsymCipherRefWithPublicKey = AsymCipherCreateWithPublicKey(pub_key);
+	printf("AsymCipher created with public key: ");
+	printKey(AsymCipherGetPublicKey(p_AsymCipherRefWithPublicKey));
+
+	free(ciphered);
+	ciphered = AsymCipherEncrypt(p_AsymCipherRefWithPublicKey, data, strlen(data)+1, &outputLength);
+	printf("Ciphered text: ");
+	printSecure_t(ciphered);
+	free(original);
+	original = AsymCipherDecrypt(p_AsymCipher, ciphered, outputLength, &outputLength);
+	printf("Deciphered: %s\n", original);
+
+	printf("Destroying asymCipher...\n");
+	AsymCipherDestroy(p_AsymCipher);
+	AsymCipherDestroy(p_AsymCipherRefWithPublicKey);
 
 	
 	return 0;

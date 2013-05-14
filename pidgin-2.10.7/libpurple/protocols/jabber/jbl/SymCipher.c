@@ -13,8 +13,8 @@
 struct SymCipher_t {
 	EVP_CIPHER_CTX encryption_ctx;
 	EVP_CIPHER_CTX decryption_ctx;
-	unsigned char keyData[128];
-	unsigned char salt[8];
+	unsigned char keyData[SYMCIPHER_KEY_LENGTH];
+	unsigned char salt[SYMCIPHER_SALT_LENGTH];
 };
 
 static void SecureRandFill(unsigned char *buffer, size_t l) {
@@ -34,7 +34,7 @@ static int aes_init(EVP_CIPHER_CTX *encryption_ctx,
 					EVP_CIPHER_CTX *decryption_ctx,
 					const unsigned char *keyData,
 					unsigned int keyDataLength,
-					const unsigned char salt[8])
+					const unsigned char salt[SYMCIPHER_SALT_LENGTH])
 {
 	int i, nrounds = 5;
 	unsigned char key[16];
@@ -138,14 +138,14 @@ SymCipherRef	SymCipherCreateWithKey(const char *keyHex,
 		unsigned long keyLength = 0;
 		// guchar *purple_base16_decode(const char *str, gsize *ret_len)
 		unsigned char *keyBuffer = purple_base16_decode(keyHex, &keyLength);
-		assert(keyLength == 128);
+		assert(keyLength == SYMCIPHER_KEY_LENGTH);
 		
 		unsigned long saltLength = 0;
 		unsigned char *saltBuffer = purple_base16_decode(saltHex, &saltLength);
-		assert(saltLength == 8);
+		assert(saltLength == SYMCIPHER_SALT_LENGTH);
 		
-		memcpy(newCipher->keyData, keyBuffer, 128);
-		memcpy(newCipher->salt, saltBuffer, 8);
+		memcpy(newCipher->keyData, keyBuffer, SYMCIPHER_KEY_LENGTH);
+		memcpy(newCipher->salt, saltBuffer, SYMCIPHER_SALT_LENGTH);
 		
 		g_free(keyBuffer);
 		g_free(saltBuffer);

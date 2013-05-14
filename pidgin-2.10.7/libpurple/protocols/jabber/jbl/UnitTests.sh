@@ -21,7 +21,7 @@ CRYPTRON="cryptron/ecies.c cryptron/secure.c cryptron/keys.c"
 echo "Building tests..."
 $CC SymCipherTest.c SymCipher.c -o SymCipherTest $GLIB_FLAGS $OPENSSL_FLAGS $PURPLE_FLAGS
 stopOnErr
-#$CC AsymCipherTest.c AsymCipher.c -o AsymCipherTest $CRYPTRON $GLIB_FLAGS $OPENSSL_FLAGS
+$CC AsymCipherTest.c AsymCipher.c -o AsymCipherTest $CRYPTRON $GLIB_FLAGS $OPENSSL_FLAGS
 stopOnErr
 
 echo "Testing..."

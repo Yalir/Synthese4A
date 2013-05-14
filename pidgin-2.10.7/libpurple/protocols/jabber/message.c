@@ -597,7 +597,6 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 				/* Modify message before reading if required by the JBL protocol
 				 */
 				char *modified_msg = NULL;
-				char *messageToUse = msg;
 				PurpleConversation *conv = purple_find_conversation_with_account
 				(PURPLE_CONV_TYPE_IM, from, pc->account);
 				
@@ -618,7 +617,7 @@ void jabber_message_parse(JabberStream *js, xmlnode *packet)
 				}
 				/* ================= END OF MODIFIED SECTION ================= */
 				
-				char *escaped = purple_markup_escape_text(messageToUse, -1);
+				char *escaped = purple_markup_escape_text(msg, -1);
 				jm->body = purple_strdup_withhtml(escaped);
 				g_free(escaped);
 				g_free(msg);

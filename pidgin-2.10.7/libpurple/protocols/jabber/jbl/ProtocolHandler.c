@@ -35,8 +35,12 @@ static char *StructuredMessagePack(StructuredMessage message)
 	if (message.dataLength > 0)
 		memcpy(finalBuffer + 1, message.data, message.dataLength);
 	
+	//printf("StructuredMessagePack )
+	
 	gchar *encoded = purple_base64_encode(finalBuffer, message.dataLength + 1);
 	g_free(finalBuffer);
+	
+	printf("StructuredMessagePack encoded length = %d\n", strlen(encoded)+1);
 	
 	return encoded;
 }
@@ -57,6 +61,8 @@ static StructuredMessage StructuredMessageExtract(const char *b64Data, gboolean 
 	else {
 		*success = TRUE;
 		memcpy(&message.code, decoded, 1);
+		
+		printf("StructuredMessageExtract decoded length = %d\n", decodedLength);
 		
 		if (decodedLength > 1) {
 			char *dataBuffer = g_malloc(decodedLength-1);
@@ -205,6 +211,7 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 				if (!structured.data || (structured.data && structured.data[structured.dataLength-1] == '\0')) {
 					messageHandlers[structured.code](aHandler, structured,
 													 conv, who, modified_input_msg);
+					return TRUE;
 				} else {
 					// Data is not a string, thus it's not a JBL message
 					*modified_input_msg = g_strdup(original_msg);
@@ -249,6 +256,24 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 		ProtocolHandlerDisable(aHandler);
 		modified = TRUE;
 		*modified_output_msg = NULL;
+	} else if (aHandler->encryption_enabled == TRUE) {
+		assert(aHandler->symCipher != NULL);
+		
+		unsigned int outputLength = 0;
+		void *encrypted = SymCipherEncrypt(aHandler->symCipher, original_msg,
+										   strlen(original_msg)+1, &outputLength);
+		assert(encrypted != NULL);
+		assert(outputLength > 0);
+		
+		char *b64Data = purple_base64_encode(encrypted, outputLength);
+		assert(b64Data != NULL);
+		printf("B64:%s\n", b64Data);
+		
+		StructuredMessage structured = {EncryptedUserMessageCode, b64Data, strlen(b64Data)+1};
+		*modified_output_msg = StructuredMessagePack(structured);
+		g_free(encrypted);
+		g_free(b64Data);
+		modified = TRUE;
 	}
 	
 	return modified;
@@ -456,18 +481,35 @@ static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
 				assert(aHandler->peerAsymCipher != NULL);
 				
 				// Now create secret key
-				aHandler->symCipher = SymCipherCreate();
+				aHandler->symCipher = SymCipherCreateWithGeneratedKey();
 				assert(aHandler->symCipher != NULL);
 				
-				unsigned encryptedSecretLength;
-				char *secretKeyHex = SymCipherGetSecretKey(aHandler->symCipher);
+				char *secretKeyHex = SymCipherGetKey(aHandler->symCipher);
+				char *saltHex = SymCipherGetSalt(aHandler->symCipher);
+				assert(secretKeyHex != NULL);
+				assert(saltHex);
 				
 				unsigned long secretKeyLength = 0;
 				char *secretKey = (char *)purple_base16_decode(secretKeyHex,
 															   &secretKeyLength);
+				assert(secretKey != NULL);
+				assert(secretKeyLength == SYMCIPHER_KEY_LENGTH);
+				
+				unsigned long saltLength = 0;
+				char *salt = (char *)purple_base16_decode(saltHex, &saltLength);
+				assert(salt != NULL);
+				assert(saltLength == SYMCIPHER_SALT_LENGTH);
+				
+				char keyPlusSalt[SYMCIPHER_KEY_LENGTH + SYMCIPHER_SALT_LENGTH];
+				memcpy(keyPlusSalt, secretKey, SYMCIPHER_KEY_LENGTH);
+				memcpy(keyPlusSalt + SYMCIPHER_KEY_LENGTH, salt,
+					   SYMCIPHER_SALT_LENGTH);
+				
+				unsigned long encryptedSecretLength = 0;
 				void *encryptedSecret = AsymCipherEncrypt(aHandler->peerAsymCipher,
-														  secretKey,
-														  strlen(secretKey)+1,
+														  keyPlusSalt,
+														  SYMCIPHER_KEY_LENGTH +
+														  SYMCIPHER_SALT_LENGTH,
 														  &encryptedSecretLength);
 				
 				char *encryptedSecretHex = purple_base16_encode(encryptedSecret,
@@ -537,7 +579,8 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 	assert(modified_input_msg != NULL);
 	printf("%s with %s\n", __FUNCTION__, who);
 	
-	if (aHandler->validatedStep == MyPublicKeyMessageStep) {
+	/*if (aHandler->validatedStep == ItsPublicKeyAnswerStep) {*/
+	if (aHandler->localAsymCipher != NULL && aHandler->peerAsymCipher != NULL) {
 		assert(aHandler->localAsymCipher != NULL);
 		
 		const char *encryptedSecretKeyHex = structured.data;
@@ -550,19 +593,35 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 		assert(encryptedSecretKey != NULL && encryptedSecretKeyLength > 0);
 		
 		// Encrypted bin to bin
-		unsigned int secretKeyLength = 0;
-		char *secretKey = AsymCipherDecrypt(aHandler->localAsymCipher,
+		unsigned long keyPlusSaltLength = 0;
+		char *keyPlusSalt = AsymCipherDecrypt(aHandler->localAsymCipher,
 											encryptedSecretKey,
 											encryptedSecretKeyLength,
-											&secretKeyLength);
+											&keyPlusSaltLength);
 		
-		assert(secretKey != NULL && secretKeyLength > 0);
+		assert(keyPlusSalt != NULL &&
+			   keyPlusSaltLength == SYMCIPHER_KEY_LENGTH + SYMCIPHER_SALT_LENGTH);
+		
+		// Decomposition
+		unsigned char secretKey[SYMCIPHER_KEY_LENGTH];
+		unsigned char salt[SYMCIPHER_SALT_LENGTH];
+		memcpy(secretKey, keyPlusSalt, SYMCIPHER_KEY_LENGTH);
+		memcpy(salt, keyPlusSalt+SYMCIPHER_KEY_LENGTH, SYMCIPHER_SALT_LENGTH);
+		
+		// Encode
+		char *secretKeyHex = purple_base16_encode(secretKey, SYMCIPHER_KEY_LENGTH);
+		char *saltHex = purple_base16_encode(salt, SYMCIPHER_SALT_LENGTH);
 		
 		// Create symetric cipher
-		aHandler->symCipher = SymCipherCreateWithSecretKey(secretKey,
-														   secretKeyLength);
+		aHandler->symCipher = SymCipherCreateWithKey(secretKeyHex,
+													 saltHex);
 		assert(aHandler->symCipher != NULL);
-		g_free(secretKey);
+		
+		// Clean
+		g_free(encryptedSecretKey);
+		g_free(keyPlusSalt);
+		g_free(secretKeyHex);
+		g_free(saltHex);
 		
 		// Notify the peer that the secret key reception and decryption went well
 		StructuredMessage structured =
@@ -574,7 +633,8 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 		*modified_input_msg = NULL;
 	} else {
 		fprintf(stderr, "SecretKeyTransmissionHandler: protocol error: the peer does"
-				" not know my public key yet but it sent me a secret key\n");
+				" not know my public key yet but it sent me a secret key (step %d)\n",
+				aHandler->validatedStep);
 		*modified_input_msg = NULL;
 	}
 }
@@ -637,10 +697,12 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 		assert(aHandler->symCipher != NULL);
 		
 		const char *b64Encrypted = structured.data;
+		printf("B64:%s\n", b64Encrypted);
 		
 		unsigned long encryptedLength = 0;
 		unsigned char *encrypted = purple_base64_decode(b64Encrypted, &encryptedLength);
-		assert(encrypted && encryptedLength > 0);
+		assert(encrypted != NULL);
+		assert(encryptedLength > 0);
 		
 		unsigned int messageLength;
 		char *message = SymCipherDecrypt(aHandler->symCipher,
@@ -650,11 +712,12 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 		
 		assert(message && messageLength > 0);
 		*modified_input_msg = message;
+		printf("Decrypte: %s\n", message);
 		g_free(encrypted);
 	} else {
 		fprintf(stderr, "EncryptedUserMessageHandler: protocol error: received"
 				" encrypted user message but encryption is not ready\n");
-		*modified_input_msg = NULL;
+		*modified_input_msg = structured.data;
 	}
 }
 

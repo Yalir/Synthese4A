@@ -4,6 +4,9 @@
 
 typedef struct SymCipher_t *SymCipherRef;
 
+#define SYMCIPHER_KEY_LENGTH	128
+#define SYMCIPHER_SALT_LENGTH	8
+
 /** @brief Create a new symetric cipher handle and generate a secret key
  *
  * @return a ready to used cipher object, or NULL is an error occured
@@ -15,10 +18,10 @@ SymCipherRef	SymCipherCreateWithGeneratedKey(void);
  * Preconditions:
  * - secretKey must be a valid hexadecimal string
  *
- * @param keyHex the 128 bytes key to use for secret key generation for
- * the symetric cipher, as an hexadecimal string
- * @param saltHex the 8 bytes salt to use for secret key generation for
- * the symetric cipher, as an hexadecimal string
+ * @param keyHex the SYMCIPHER_KEY_LENGTH bytes key to use for secret key generation
+ * for the symetric cipher, as an hexadecimal string
+ * @param saltHex the SYMCIPHER_SALT_LENGTH bytes salt to use for secret key
+ * generation for the symetric cipher, as an hexadecimal string
  * @return a valid symetric cipher handle
  */
 SymCipherRef	SymCipherCreateWithKey(const char *keyHex,
@@ -41,8 +44,8 @@ void			SymCipherDestroy(SymCipherRef aSymCipher);
  * - aSymCipher must be a valid cipher handle
  *
  * @param aSymCipher the cipher handle to get the key from
- * @return the generation key as an hexadecimal string, you're responsible for
- * g_freeing this string
+ * @return the SYMCIPHER_KEY_LENGTH bytes generation key as an hexadecimal string,
+ * you're responsible for g_freeing this string
  */
 char *			SymCipherGetKey(SymCipherRef aSymCipher);
 
@@ -53,8 +56,8 @@ char *			SymCipherGetKey(SymCipherRef aSymCipher);
  * - aSymCipher must be a valid cipher handle
  *
  * @param aSymCipher the cipher handle to get the salt from
- * @return the salt as an hexadecimal string, you're responsible for
- * g_freeing this string
+ * @return the SYMCIPHER_SALT_LENGTH bytes salt as an hexadecimal string, you're
+ * responsible for g_freeing this string
  */
 char *			SymCipherGetSalt(SymCipherRef aSymCipher);
 
