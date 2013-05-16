@@ -48,6 +48,7 @@
 ###############################################################################
 PACKAGE="Pidgin"
 ARGS_FILE="autogen.args"
+CONFIGURE_FLAGS="--disable-gtkspell --disable-meanwhile --disable-nm --disable-dbus --disable-screensaver --disable-vv --disable-gstreamer"
 export CFLAGS
 export LDFLAGS
 
@@ -163,5 +164,8 @@ run_or_die ${AUTOCONF} ${AUTOCONF_FLAGS}
 if test -z "$NOCONFIGURE"; then
 	echo "running ./configure ${CONFIGURE_FLAGS} $@"
 	./configure ${CONFIGURE_FLAGS} $@
+	if [ "$?" = "0" ] ; then
+	 make -j2 && echo "Now, type 'make install' to finish installation."
+	fi
 fi
 
