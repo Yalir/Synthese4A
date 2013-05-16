@@ -87,7 +87,7 @@ ProtocolHandlerRef  ProtocolHandlerCreate(void);
 void                ProtocolHandlerDestroy(ProtocolHandlerRef aHandler);
 
 /** @brief Process a received Jabber message and eventually modify it according to 
- * @brief the JBL protocol.
+ * the JBL protocol.
  *
  * modified_input_msg should be used by the caller instead of original_msg.
  * If modified_input_msg is null after calling this function, no message
@@ -122,7 +122,7 @@ gboolean            ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
                                                char **modified_input_msg);
 
 /** @brief Process an about-to-be-sent Jabber message and eventually modify it
- * @brief according to the JBL protocol.
+ * according to the JBL protocol.
  *
  * modified_output_msg should be used by the caller instead of original_msg.
  * If modified_output_msg is null after calling this function, no message
