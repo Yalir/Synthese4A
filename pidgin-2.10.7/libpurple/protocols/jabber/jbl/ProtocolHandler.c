@@ -212,15 +212,29 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 					return FALSE;
 				}
 			} else {
+				if (aHandler->encryption_enabled == TRUE) {
+					printf("ProtocolHandlerHandleInput: received clear message "
+						   "whereas encryption is enabled\n");
+					
+					purple_conv_im_write(PURPLE_CONV_IM(conv), who,
+										 "Warning: encryption is enabled but the "
+										 "following message has been received unencrypted:",
+										 0, time(NULL));
+				}
+				
 				*modified_input_msg = g_strdup(original_msg);
 				return FALSE;
 			}
 		} else {
-			if (aHandler->encryption_enabled == TRUE)
+			if (aHandler->encryption_enabled == TRUE) {
+				printf("ProtocolHandlerHandleInput: received clear message "
+					   "whereas encryption is enabled\n");
+				
 				purple_conv_im_write(PURPLE_CONV_IM(conv), who,
 									 "Warning: encryption is enabled but the "
 									 "following message has been received unencrypted:",
 									 0, time(NULL));
+			}
 				
 			*modified_input_msg = g_strdup(original_msg);
 			return FALSE;
