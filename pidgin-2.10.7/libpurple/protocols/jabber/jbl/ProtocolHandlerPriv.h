@@ -21,6 +21,7 @@ typedef enum {
 	EndEnumCode
 } ProtocolCode;
 
+// Generic message handler prototype
 typedef void (* MessageHandler)(ProtocolHandlerRef aHandler,
 								StructuredMessage structured,
 								PurpleConversation *conv,
@@ -65,6 +66,7 @@ static void ProtocolHandlerEnable(ProtocolHandlerRef aHandler,
 								  const char *original_msg,
 								  char **modified_input_msg);
 
+// Message handlers
 static void BadMessageHandler(ProtocolHandlerRef aHandler,
 							  StructuredMessage structured,
 							  PurpleConversation *conv,
