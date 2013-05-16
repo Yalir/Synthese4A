@@ -23,18 +23,16 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * Where 'c' is the message code/type on 1 byte followed by 'd' for the remaining
  * n bytes that can contain any required data according to the message type.
  * Valid codes are:
- * - 1: stop encryption, disable JBL protocol and switch back to classic
- * communication immediately
- * - 2: public key request. No other data.
- * - 3: public key message. Data contains the public key as hexadecimal string.
- * - 4: public key answer. Data contains OK or NOK depending on public key
+ * - 1: public key request. No other data.
+ * - 2: public key message. Data contains the public key as hexadecimal string.
+ * - 3: public key answer. Data contains OK or NOK depending on public key
  * acceptation.
- * - 5: public key already known.
- * - 6: secret key transmission. Data contains the secret key encrypted with
+ * - 4: public key already known.
+ * - 5: secret key transmission. Data contains the secret key encrypted with
  * the peer public key as hexadecimal string.
- * - 7: secret key answer. Data contains either OK or NOK to acknowledge for
+ * - 6: secret key answer. Data contains either OK or NOK to acknowledge for
  * secret key reception and decryption.
- * - 8: encrypted message. Data contains the encrypted message as base 64 string.
+ * - 7: encrypted message. Data contains the encrypted message as base 64 string.
  *
  *
  * === Protocol ===
@@ -60,6 +58,9 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  * 12. A creates a secret key and sends it to B, encrypted with B's public key,
  * signed with A's private key.
  * 14. B sends a secret key answer to A, signed with B's private key
+ *
+ * When one user wants to stop encryption, he/she types ":encrypt=0". Then
+ * ":lets-stop-encryption" is sent to the peer and the protocol is stopped.
  *
  * On failure, the communication switches back to the classical text mode.
  * On success, the messages are sent in the same raw mode with prefix code 7

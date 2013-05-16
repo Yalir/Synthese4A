@@ -14,14 +14,13 @@
 static MessageHandler messageHandlers[EndEnumCode] =
 {
 	BadMessageHandler,             // 0
-	StopEncryptionHandler,         // 1
-	PublicKeyRequestHandler,       // 2
-	PublicKeyMessageHandler,       // 3
-	PublicKeyAnswerHandler,        // 4
-	PublicKeyAlreadyKnownHandler,  // 5
-	SecretKeyTransmissionHandler,       // 6
-	SecretKeyAnswerHandler,        // 7
-	EncryptedUserMessageHandler,   // 8
+	PublicKeyRequestHandler,       // 1
+	PublicKeyMessageHandler,       // 2
+	PublicKeyAnswerHandler,        // 3
+	PublicKeyAlreadyKnownHandler,  // 4
+	SecretKeyTransmissionHandler,  // 5
+	SecretKeyAnswerHandler,        // 6
+	EncryptedUserMessageHandler,   // 7
 };
 
 // Serialize a message with the given structure
@@ -35,12 +34,8 @@ static char *StructuredMessagePack(StructuredMessage message)
 	if (message.dataLength > 0)
 		memcpy(finalBuffer + 1, message.data, message.dataLength);
 	
-	//printf("StructuredMessagePack )
-	
 	gchar *encoded = purple_base64_encode(finalBuffer, message.dataLength + 1);
 	g_free(finalBuffer);
-	
-	printf("StructuredMessagePack encoded length = %d\n", strlen(encoded)+1);
 	
 	return encoded;
 }
@@ -61,8 +56,6 @@ static StructuredMessage StructuredMessageExtract(const char *b64Data, gboolean 
 	else {
 		*success = TRUE;
 		memcpy(&message.code, decoded, 1);
-		
-		printf("StructuredMessageExtract decoded length = %d\n", decodedLength);
 		
 		if (decodedLength > 1) {
 			char *dataBuffer = g_malloc(decodedLength-1);
@@ -100,6 +93,7 @@ static void StructuredMessageSend(StructuredMessage structured,
 const char *LetsEnableEncryptionRequestString = ":lets-enable-encryption";
 const char *LetsEnableEncryptionOkAnswerString = ":ok-lets-encrypt";
 const char *LetsEnableEncryptionNokAnswerString = ":no-i-dont-want-to";
+const char *LetsStopEncryptionString = ":lets-stop-encryption";
 const char *NOKString = "NOK";
 const char *OKString = "OK";
 
@@ -247,12 +241,16 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 	//puts(__FUNCTION__);
 	
 	gboolean modified = FALSE;
+	PurpleConversation *conv = purple_find_conversation_with_account
+	(PURPLE_CONV_TYPE_IM, who, gc->account);
 	
 	if (strcmp(original_msg, ":encrypt=1") == 0) {
 		ProtocolHandlerEnable(aHandler, gc, who, original_msg, modified_output_msg);
 		modified = TRUE;
 		*modified_output_msg = NULL;
 	} else if (strcmp(original_msg, ":encrypt=0") == 0) {
+		purple_conv_im_send(PURPLE_CONV_IM(conv), LetsStopEncryptionString);
+		
 		ProtocolHandlerDisable(aHandler);
 		modified = TRUE;
 		*modified_output_msg = NULL;
@@ -267,7 +265,6 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 		
 		char *b64Data = purple_base64_encode(encrypted, outputLength);
 		assert(b64Data != NULL);
-		printf("B64:%s\n", b64Data);
 		
 		StructuredMessage structured = {EncryptedUserMessageCode, b64Data, strlen(b64Data)+1};
 		*modified_output_msg = StructuredMessagePack(structured);
@@ -364,25 +361,6 @@ static void BadMessageHandler(ProtocolHandlerRef aHandler,
 	assert(FALSE);
 }
 
-static void StopEncryptionHandler(ProtocolHandlerRef aHandler,
-								  StructuredMessage structured,
-								  PurpleConversation *conv,
-								  const char *who,
-								  char **modified_input_msg)
-{
-	assert(aHandler != NULL);
-	assert(!structured.data ||
-		   (structured.data && structured.data[structured.dataLength-1] == '\0'));
-	assert(conv != NULL);
-	assert(who != NULL);
-	assert(strlen(who) > 0);
-	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
-	
-	ProtocolHandlerDisable(aHandler);
-	*modified_input_msg = NULL;
-	aHandler->validatedStep = NotYetStartedStep;
-}
 
 static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
 									StructuredMessage yourStructured,
@@ -631,6 +609,8 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 		aHandler->validatedStep = EncryptionIsEnabledStep;
 		aHandler->encryption_enabled = TRUE;
 		*modified_input_msg = NULL;
+		
+		
 	} else {
 		fprintf(stderr, "SecretKeyTransmissionHandler: protocol error: the peer does"
 				" not know my public key yet but it sent me a secret key (step %d)\n",
@@ -697,7 +677,6 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 		assert(aHandler->symCipher != NULL);
 		
 		const char *b64Encrypted = structured.data;
-		printf("B64:%s\n", b64Encrypted);
 		
 		unsigned long encryptedLength = 0;
 		unsigned char *encrypted = purple_base64_decode(b64Encrypted, &encryptedLength);
@@ -711,13 +690,21 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 										 &messageLength);
 		
 		assert(message && messageLength > 0);
+		
+		
+		if (strcmp(message, LetsStopEncryptionString) == 0) {
+			// Encryption stop requested
+			ProtocolHandlerDisable(aHandler);
+			g_free(message);
+			message = NULL;
+		}
+		
 		*modified_input_msg = message;
-		printf("Decrypte: %s\n", message);
 		g_free(encrypted);
 	} else {
 		fprintf(stderr, "EncryptedUserMessageHandler: protocol error: received"
 				" encrypted user message but encryption is not ready\n");
-		*modified_input_msg = structured.data;
+		*modified_input_msg = g_strdup(structured.data);
 	}
 }
 

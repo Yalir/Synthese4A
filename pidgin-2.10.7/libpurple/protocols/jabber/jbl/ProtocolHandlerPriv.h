@@ -7,17 +7,17 @@ typedef struct {
 	unsigned char code;
 	const char *data;
 	unsigned int dataLength;
+	gboolean sendingCommand;
 } StructuredMessage;
 
 typedef enum {
-	StopEncryptionCode = 1,        // No associated data
-	PublicKeyRequestCode = 2,      // No associated data
-	PublicKeyMessageCode = 3,      // Public key
-	PublicKeyAnswerCode = 4,       // OK or NOK
-	PublicKeyAlreadyKnownCode = 5, // No associated data
-	SecretKeyTransmissionCode = 6,      // Secret key
-	SecretKeyAnswerCode = 7,       // OK or NOK
-	EncryptedUserMessageCode = 8,  // User message
+	PublicKeyRequestCode = 1,      // No associated data
+	PublicKeyMessageCode = 2,      // Public key
+	PublicKeyAnswerCode = 3,       // OK or NOK
+	PublicKeyAlreadyKnownCode = 4, // No associated data
+	SecretKeyTransmissionCode = 5, // Secret key
+	SecretKeyAnswerCode = 6,       // OK or NOK
+	EncryptedUserMessageCode = 7,  // User message
 	EndEnumCode
 } ProtocolCode;
 
@@ -52,6 +52,7 @@ typedef enum {
 extern const char *LetsEnableEncryptionRequestString;
 extern const char *LetsEnableEncryptionOkAnswerString;
 extern const char *LetsEnableEncryptionNokAnswerString;
+extern const char *LetsStopEncryptionString;
 extern const char *NOKString;
 extern const char *OKString;
 
@@ -69,11 +70,6 @@ static void BadMessageHandler(ProtocolHandlerRef aHandler,
 							  PurpleConversation *conv,
 							  const char *who,
 							  char **modified_input_msg);
-static void StopEncryptionHandler(ProtocolHandlerRef aHandler,
-								  StructuredMessage structured,
-								  PurpleConversation *conv,
-								  const char *who,
-								  char **modified_input_msg);
 static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
 									StructuredMessage structured,
 									PurpleConversation *conv,
