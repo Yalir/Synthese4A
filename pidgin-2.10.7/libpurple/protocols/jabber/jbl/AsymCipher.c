@@ -5,7 +5,7 @@
 #include <glib.h>
 
 #include "AsymCipher.h"
-#include "./cryptron/ecies.h"
+#include "cryptron/ecies.h"
 
 struct AsymCipher_t {
 	EC_KEY *key;
@@ -82,6 +82,7 @@ void * AsymCipherDecrypt(AsymCipherRef p_AsymCipher, const void *data,
 }
 
 void AsymCipherDestroy(AsymCipherRef p_AsymCipher){
+	assert(p_AsymCipher != NULL);
 
 	if (p_AsymCipher->key) {
 		ecies_key_free(p_AsymCipher->key);
