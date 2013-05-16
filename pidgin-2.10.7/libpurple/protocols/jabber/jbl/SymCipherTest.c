@@ -46,6 +46,7 @@ int main()
 	decrypted2 = SymCipherDecrypt(iniCipher, encrypted2, encryptedLength2, &decryptedLength2);
 	assert(decrypted2 != NULL);
 	assert(decryptedLength2 > 0);
+	assert(strcmp(decrypted2, plaintext) == 0);
 	
 	/** use the second symcipher to decrypt data encrypted with the first symCipher */
 	char *decrypted3;
