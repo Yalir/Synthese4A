@@ -29,42 +29,47 @@ void printSecure_t (secure_t *sec){
 
 int main(){
 
-	printf("AsymCipherCreateWithGeneratedKeyPair...\n");
 	AsymCipherRef p_AsymCipher = AsymCipherCreateWithGeneratedKeyPair();
+	assert(p_AsymCipher != NULL);
+
 	const char * pub_key = AsymCipherGetPublicKey(p_AsymCipher);
+	assert(pub_key != NULL);
+	assert(strlen(pub_key) > 0);
+	
 	const char * priv_key = AsymCipherGetPrivateKey(p_AsymCipher);
-	printf("Public key created: ");
-	printKey(pub_key);
-	printf("Private key created: ");
-	printKey(priv_key);
-	printf("Ciphering...\n");
-	char *data = "Random data, high as fuck!";
+	assert(priv_key != NULL);
+	assert(strlen(priv_key) > 0);
+
+	char *data = "True random data";
 	unsigned long outputLength = 0;
 	secure_t *ciphered = AsymCipherEncrypt(p_AsymCipher, data, strlen(data)+1, &outputLength);
-	printf("Plaintext: ");
-	printKey(data);
-	printf("Ciphered text: ");
-	printSecure_t(ciphered);
-	printf("Ciphered length: %ld\n", outputLength);
+	assert(ciphered != NULL);
+	assert(outputLength > 0);
+	
 	char * original = AsymCipherDecrypt(p_AsymCipher, ciphered, outputLength, &outputLength);
-	printf("Deciphered: %s\n", original);
+	assert(original != NULL);
+	
+	assert(strcmp(original, data) == 0);
+
 
 	AsymCipherRef p_AsymCipherRefWithPublicKey = AsymCipherCreateWithPublicKey(pub_key);
-	printf("AsymCipher created with public key: ");
-	printKey(AsymCipherGetPublicKey(p_AsymCipherRefWithPublicKey));
-
+	assert(p_AsymCipherRefWithPublicKey != NULL);
+	
 	free(ciphered);
 	ciphered = AsymCipherEncrypt(p_AsymCipherRefWithPublicKey, data, strlen(data)+1, &outputLength);
-	printf("Ciphered text: ");
-	printSecure_t(ciphered);
+	assert(ciphered != NULL);
+	
 	free(original);
 	original = AsymCipherDecrypt(p_AsymCipher, ciphered, outputLength, &outputLength);
-	printf("Deciphered: %s\n", original);
+	assert(original != NULL);
+	
+	assert(strcmp(original, data) == 0);
 
-	printf("Destroying asymCipher...\n");
 	AsymCipherDestroy(p_AsymCipher);
+	assert(p_AsymCipher == NULL);
+	
 	AsymCipherDestroy(p_AsymCipherRefWithPublicKey);
-
+	assert(p_AsymCipherRefWithPublicKey == NULL);
 	
 	return 0;
 }
