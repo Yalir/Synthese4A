@@ -1,7 +1,10 @@
 #!/bin/sh
 
-function stopOnErr()
+function check()
 {
+	echo "$@"
+	$@
+	
 	if [ $? != 0 ]
 	  then
 		echo "*** an error occured, script aborted";
@@ -19,13 +22,12 @@ PURPLE_FLAGS="-lpurple"
 CRYPTRON="cryptron/ecies.c cryptron/secure.c cryptron/keys.c"
 
 echo "Building tests..."
-$CC SymCipherTest.c SymCipher.c -o SymCipherTest $GLIB_FLAGS $OPENSSL_FLAGS $PURPLE_FLAGS
-stopOnErr
-$CC AsymCipherTest.c AsymCipher.c -o AsymCipherTest $CRYPTRON $GLIB_FLAGS $OPENSSL_FLAGS
-stopOnErr
+check $CC SymCipherTest.c SymCipher.c -o SymCipherTest $GLIB_FLAGS $OPENSSL_FLAGS $PURPLE_FLAGS
+check $CC AsymCipherTest.c AsymCipher.c -o AsymCipherTest $CRYPTRON $GLIB_FLAGS $OPENSSL_FLAGS
+
 
 echo "Testing..."
-./SymCipherTest
-stopOnErr
-./AsymCipherTest
-stopOnErr
+check ./SymCipherTest
+check ./AsymCipherTest
+
+echo "End of script"
