@@ -89,7 +89,7 @@ static void *aes_encrypt(EVP_CIPHER_CTX *encryption_ctx, const void *plaintext, 
 }
 
 /*
- * Decrypt *len bytes of ciphertext
+ * Decrypt input_length bytes of ciphertext
  */
 static void *aes_decrypt(EVP_CIPHER_CTX *decryption_ctx, const void *ciphertext, unsigned int input_length, unsigned int *output_length)
 {	
@@ -136,7 +136,6 @@ SymCipherRef	SymCipherCreateWithKey(const char *keyHex,
 	if (newCipher != NULL)
 	{
 		unsigned long keyLength = 0;
-		// guchar *purple_base16_decode(const char *str, gsize *ret_len)
 		unsigned char *keyBuffer = purple_base16_decode(keyHex, &keyLength);
 		assert(keyLength == SYMCIPHER_KEY_LENGTH);
 		

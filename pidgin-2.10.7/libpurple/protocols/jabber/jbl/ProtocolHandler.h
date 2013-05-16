@@ -69,13 +69,13 @@ typedef struct ProtocolHandler_t *ProtocolHandlerRef;
  *
  */
 
-/** Create a new JBL protocol handler
+/** @brief Create a new JBL protocol handler
  *
  * @return an newly created and initialized JBL protocol handler
  */
 ProtocolHandlerRef  ProtocolHandlerCreate(void);
 
-/** Destroy the given JBL protocol handler
+/** @brief Destroy the given JBL protocol handler
  *
  * The resources and the handler will be freed
  *
@@ -86,8 +86,8 @@ ProtocolHandlerRef  ProtocolHandlerCreate(void);
  */
 void                ProtocolHandlerDestroy(ProtocolHandlerRef aHandler);
 
-/** Process a received Jabber message and eventually modify it according to
- * the JBL protocol.
+/** @brief Process a received Jabber message and eventually modify it according to 
+ * @brief the JBL protocol.
  *
  * modified_input_msg should be used by the caller instead of original_msg.
  * If modified_input_msg is null after calling this function, no message
@@ -121,8 +121,8 @@ gboolean            ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
                                                const char *original_msg,
                                                char **modified_input_msg);
 
-/** Process an about-to-be-sent Jabber message and eventually modify it
- * according to the JBL protocol.
+/** @brief Process an about-to-be-sent Jabber message and eventually modify it
+ * @brief according to the JBL protocol.
  *
  * modified_output_msg should be used by the caller instead of original_msg.
  * If modified_output_msg is null after calling this function, no message
