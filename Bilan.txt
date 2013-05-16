@@ -1,0 +1,11 @@
+Problèmes existants :
+- pas d'authentification
+- protocole visible dans la fenêtre de chat, même si les messages sensibles sont chiffrés
+- quitter pidgin puis revenir à la conversation où le chiffrement avait été activé ne permet plus de discuter (celui qui a reco envoie en clair, et l'autre en chiffré)
+- pas de sauvegarde des clés publiques connues
+- seul le corps du message est chiffré (donc le destinataire est en clair)
+- pas de portabilité si endianness différente (à cause du secure_t qu'il faudrait serialiser correctement)
+- nous ne connaissons pas la taille de clé basée sur courbe elliptique (utilisation du code externe cryptron...) pour la partie chiffrement asymétrique
+- transfert de fichiers non pris en charge par le protocole
+- l'identifiant du message (relatif à l'étape du protocole) est lisible
+- chiffrement déterministe
