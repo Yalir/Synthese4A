@@ -111,7 +111,6 @@ struct ProtocolHandler_t {
 
 ProtocolHandlerRef ProtocolHandlerCreate(void)
 {
-	puts(__FUNCTION__);
 	ProtocolHandlerRef handler = g_malloc0(sizeof(*handler));
 	
 	if (handler) {
@@ -149,8 +148,6 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 	assert(original_msg != NULL);
 	assert(strlen(original_msg) > 0);
 	assert(modified_input_msg != NULL);
-	
-	//puts(__FUNCTION__);
 	
 	PurpleConversation *conv = purple_find_conversation_with_account
 	(PURPLE_CONV_TYPE_IM, who, gc->account);
@@ -200,7 +197,10 @@ gboolean ProtocolHandlerHandleInput(ProtocolHandlerRef aHandler,
 		gboolean success;
 		StructuredMessage structured = StructuredMessageExtract(original_msg,
 																&success);
+		
 		if (success) {
+			// If string was a base64 one and the first byte matches
+			// one of our protocol's code, send the message to the proper handler
 			if (structured.code > 0 && structured.code < EndEnumCode) {
 				if (!structured.data || (structured.data && structured.data[structured.dataLength-1] == '\0')) {
 					messageHandlers[structured.code](aHandler, structured,
@@ -238,36 +238,42 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 	assert(strlen(original_msg) > 0);
 	assert(modified_output_msg != NULL);
 	
-	//puts(__FUNCTION__);
-	
 	gboolean modified = FALSE;
 	PurpleConversation *conv = purple_find_conversation_with_account
 	(PURPLE_CONV_TYPE_IM, who, gc->account);
 	
+	// User command to enable encryption
 	if (strcmp(original_msg, ":encrypt=1") == 0) {
 		ProtocolHandlerEnable(aHandler, gc, who, original_msg, modified_output_msg);
 		modified = TRUE;
 		*modified_output_msg = NULL;
-	} else if (strcmp(original_msg, ":encrypt=0") == 0) {
-		purple_conv_im_send(PURPLE_CONV_IM(conv), "JBL Message: after this message, encryption will be disabled");
 		
+		// User command to disable encryption
+	} else if (strcmp(original_msg, ":encrypt=0") == 0) {
+		purple_conv_im_send(PURPLE_CONV_IM(conv), "JBL Message: after this message,"
+							" encryption will be disabled");
 		purple_conv_im_send(PURPLE_CONV_IM(conv), LetsStopEncryptionString);
 		
 		ProtocolHandlerDisable(aHandler);
 		modified = TRUE;
 		*modified_output_msg = NULL;
+		
+		// User message while encryption is enabled
 	} else if (aHandler->encryption_enabled == TRUE) {
 		assert(aHandler->symCipher != NULL);
 		
+		// Encrypt
 		unsigned int outputLength = 0;
 		void *encrypted = SymCipherEncrypt(aHandler->symCipher, original_msg,
 										   strlen(original_msg)+1, &outputLength);
 		assert(encrypted != NULL);
 		assert(outputLength > 0);
 		
+		// Encode
 		char *b64Data = purple_base64_encode(encrypted, outputLength);
 		assert(b64Data != NULL);
 		
+		// Serialize
 		StructuredMessage structured = {EncryptedUserMessageCode, b64Data, strlen(b64Data)+1};
 		*modified_output_msg = StructuredMessagePack(structured);
 		g_free(encrypted);
@@ -310,7 +316,6 @@ static void ProtocolHandlerEnable(ProtocolHandlerRef aHandler,
 						   char **modified_input_msg)
 {
 	assert(aHandler != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->encryption_enabled == TRUE)
 		return;
@@ -357,7 +362,6 @@ static void BadMessageHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	fprintf(stderr, "BadMessageHandler\n");
 	assert(FALSE);
@@ -378,7 +382,6 @@ static void PublicKeyRequestHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	// Gather our pub key
 	const char *hexPub = AsymCipherGetPublicKey(aHandler->localAsymCipher);
@@ -406,7 +409,6 @@ static void PublicKeyMessageHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	// If he sends a pub key and we didn't ask for one
 	if (aHandler->validatedStep != ItsPublicKeyRequestStep) {
@@ -443,7 +445,6 @@ static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == MyPublicKeyMessageStep) {
 		if (strcmp(structured.data, OKString) == 0) {
@@ -464,11 +465,13 @@ static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
 				aHandler->symCipher = SymCipherCreateWithGeneratedKey();
 				assert(aHandler->symCipher != NULL);
 				
+				// Get both parts of the key
 				char *secretKeyHex = SymCipherGetKey(aHandler->symCipher);
 				char *saltHex = SymCipherGetSalt(aHandler->symCipher);
 				assert(secretKeyHex != NULL);
 				assert(saltHex);
 				
+				// Decode parts
 				unsigned long secretKeyLength = 0;
 				char *secretKey = (char *)purple_base16_decode(secretKeyHex,
 															   &secretKeyLength);
@@ -480,11 +483,13 @@ static void PublicKeyAnswerHandler(ProtocolHandlerRef aHandler,
 				assert(salt != NULL);
 				assert(saltLength == SYMCIPHER_SALT_LENGTH);
 				
+				// Assemble
 				char keyPlusSalt[SYMCIPHER_KEY_LENGTH + SYMCIPHER_SALT_LENGTH];
 				memcpy(keyPlusSalt, secretKey, SYMCIPHER_KEY_LENGTH);
 				memcpy(keyPlusSalt + SYMCIPHER_KEY_LENGTH, salt,
 					   SYMCIPHER_SALT_LENGTH);
 				
+				// Encrypt
 				unsigned long encryptedSecretLength = 0;
 				void *encryptedSecret = AsymCipherEncrypt(aHandler->peerAsymCipher,
 														  keyPlusSalt,
@@ -539,7 +544,6 @@ static void PublicKeyAlreadyKnownHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	assert(NULL == "Not implemented yet");
 }
@@ -557,9 +561,7 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
-	/*if (aHandler->validatedStep == ItsPublicKeyAnswerStep) {*/
 	if (aHandler->localAsymCipher != NULL && aHandler->peerAsymCipher != NULL) {
 		assert(aHandler->localAsymCipher != NULL);
 		
@@ -635,7 +637,6 @@ static void SecretKeyAnswerHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == SecretKeyTransmissionStep) {
 		if (strcmp(structured.data, OKString) == 0) {
@@ -674,7 +675,6 @@ static void EncryptedUserMessageHandler(ProtocolHandlerRef aHandler,
 	assert(who != NULL);
 	assert(strlen(who) > 0);
 	assert(modified_input_msg != NULL);
-	printf("%s with %s\n", __FUNCTION__, who);
 	
 	if (aHandler->validatedStep == EncryptionIsEnabledStep) {
 		assert(aHandler->symCipher != NULL);
