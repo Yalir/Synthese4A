@@ -3,29 +3,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include "./cryptron/ecies.h"
+#include "cryptron/ecies.h"
 
-static
-void printKey(const char *key){
-	
-	int i;
-	int length = strlen(key);
-	for(i=0 ; i<length ; i++){
-		printf("%.02x ", (unsigned char)key[i]);
-	}
-	puts("");
-}
-
-static
-void printSecure_t (secure_t *sec){
-	char *donnees = (char *)secure_body_data(sec);
-	uint64_t len = secure_body_length(sec);
-	int i;
-	for(i=0 ; i<len ; i++){
-			printf("%.02x ", (unsigned char)donnees[i]);
-	}
-	puts("");
-}
 
 int main(){
 
@@ -66,10 +45,8 @@ int main(){
 	assert(strcmp(original, data) == 0);
 
 	AsymCipherDestroy(p_AsymCipher);
-	assert(p_AsymCipher == NULL);
 	
 	AsymCipherDestroy(p_AsymCipherRefWithPublicKey);
-	assert(p_AsymCipherRefWithPublicKey == NULL);
 	
 	return 0;
 }
