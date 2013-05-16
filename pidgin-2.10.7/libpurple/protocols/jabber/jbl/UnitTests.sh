@@ -12,7 +12,7 @@ function check()
 	fi
 }
 
-CC='gcc -g'
+CC='gcc -g -Wall'
 GLIB_FLAGS=`pkg-config --cflags --libs glib-2.0`
 export PKG_CONFIG_PATH=/usr/local/ssl/lib/pkgconfig
 OPENSSL_FLAGS=`pkg-config --cflags --libs libcrypto libssl`
