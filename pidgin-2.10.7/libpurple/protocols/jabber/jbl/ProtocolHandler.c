@@ -249,6 +249,8 @@ gboolean ProtocolHandlerHandleOutput(ProtocolHandlerRef aHandler,
 		modified = TRUE;
 		*modified_output_msg = NULL;
 	} else if (strcmp(original_msg, ":encrypt=0") == 0) {
+		purple_conv_im_send(PURPLE_CONV_IM(conv), "JBL Message: after this message, encryption will be disabled");
+		
 		purple_conv_im_send(PURPLE_CONV_IM(conv), LetsStopEncryptionString);
 		
 		ProtocolHandlerDisable(aHandler);
@@ -610,7 +612,8 @@ static void SecretKeyTransmissionHandler(ProtocolHandlerRef aHandler,
 		aHandler->encryption_enabled = TRUE;
 		*modified_input_msg = NULL;
 		
-		
+		// Notify user
+		purple_conv_im_send(PURPLE_CONV_IM(conv), "JBL Message: encryption has been successfully activated");
 	} else {
 		fprintf(stderr, "SecretKeyTransmissionHandler: protocol error: the peer does"
 				" not know my public key yet but it sent me a secret key (step %d)\n",
